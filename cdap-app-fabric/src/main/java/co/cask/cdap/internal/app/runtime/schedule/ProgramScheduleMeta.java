@@ -52,7 +52,10 @@ public class ProgramScheduleMeta {
 
     return Objects.equal(this.lastUpdated, that.lastUpdated) &&
       Objects.equal(this.status, that.status);
+<<<<<<< HEAD
 
+=======
+>>>>>>> f406ea0... [CDAP-12232] Add composite trigger for scheduling
   }
 
   @Override

@@ -16,6 +16,9 @@
 
 package co.cask.cdap.internal.app.runtime.schedule;
 
+import co.cask.cdap.api.workflow.ScheduleProgramInfo;
+import co.cask.cdap.proto.ScheduleDetail;
+import co.cask.cdap.proto.id.ScheduleId;
 import com.google.common.base.Objects;
 
 /**
@@ -50,7 +53,11 @@ public class ProgramScheduleRecord {
     ProgramScheduleRecord that = (ProgramScheduleRecord) o;
 
     return Objects.equal(this.schedule, that.schedule) &&
+<<<<<<< HEAD
       Objects.equal(this.meta, that.meta);
+=======
+           Objects.equal(this.meta, that.meta);
+>>>>>>> f406ea0... [CDAP-12232] Add composite trigger for scheduling
 
   }
 
@@ -58,4 +65,26 @@ public class ProgramScheduleRecord {
   public int hashCode() {
     return Objects.hashCode(schedule, meta);
   }
+<<<<<<< HEAD
+=======
+
+  @Override
+  public String toString() {
+    return "ProgramScheduleRecord{" +
+      "schedule=" + schedule +
+      ", meta=" + meta +
+      '}';
+  }
+
+  public ScheduleDetail toScheduleDetail() {
+    ScheduleProgramInfo programInfo =
+      new ScheduleProgramInfo(schedule.getProgramId().getType().getSchedulableType(),
+                              schedule.getProgramId().getProgram());
+    ScheduleId scheduleId = schedule.getScheduleId();
+    return new ScheduleDetail(scheduleId.getNamespace(), scheduleId.getApplication(), scheduleId.getVersion(),
+                              scheduleId.getSchedule(), schedule.getDescription(), programInfo,
+                              schedule.getProperties(), schedule.getTrigger(), schedule.getConstraints(),
+                              schedule.getTimeoutMillis(), meta.getStatus().name());
+  }
+>>>>>>> f406ea0... [CDAP-12232] Add composite trigger for scheduling
 }

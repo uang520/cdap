@@ -48,6 +48,7 @@ import co.cask.cdap.internal.app.ApplicationSpecificationAdapter;
 import co.cask.cdap.internal.app.runtime.flow.FlowUtils;
 import co.cask.cdap.internal.app.runtime.schedule.ProgramSchedule;
 import co.cask.cdap.internal.app.runtime.schedule.ProgramScheduleRecord;
+import co.cask.cdap.internal.app.runtime.schedule.ProgramScheduleStatus;
 import co.cask.cdap.internal.app.runtime.schedule.SchedulerException;
 import co.cask.cdap.internal.app.runtime.schedule.constraint.ConstraintCodec;
 import co.cask.cdap.internal.app.runtime.schedule.store.Schedulers;
@@ -624,7 +625,8 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
                                         @QueryParam("trigger-app-version") String triggerAppVersion,
                                         @QueryParam("trigger-program-type") String triggerProgramType,
                                         @QueryParam("trigger-program-name") String triggerProgramName,
-                                        @QueryParam("trigger-program-statuses") String triggerProgramStatuses)
+                                        @QueryParam("trigger-program-statuses") String triggerProgramStatuses,
+                                        @QueryParam("schedule-status") String scheduleStatus)
     throws BadRequestException {
     boolean asScheduleSpec = returnScheduleAsSpec(format);
     if (triggerNamespaceId == null && triggerAppName == null && triggerAppVersion == null
@@ -638,7 +640,7 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
     final ProgramId triggerProgramId = appId.program(ProgramType.valueOfCategoryName(triggerProgramType),
                                                      triggerProgramName);
     programScheduler.findSchedules(triggerProgramId.toString());
-    Set<ProgramScheduleRecord> schedules = new HashSet<>();
+    Collection<ProgramScheduleRecord> schedules = new HashSet<>();
     final Set<co.cask.cdap.api.ProgramStatus> queryProgramStatuses = new HashSet<>();
     if (triggerProgramStatuses != null) {
       try {
@@ -656,9 +658,10 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
         queryProgramStatuses.add(status);
       }
     }
-    for (String triggerKey : Schedulers.triggerKeysForProgramStatus(triggerProgramId, queryProgramStatuses)) {
+    for (String triggerKey : Schedulers.triggerKeysForProgramStatuses(triggerProgramId, queryProgramStatuses)) {
       schedules.addAll(programScheduler.findSchedules(triggerKey));
     }
+    schedules = filterSchedulesByStatus(schedules, scheduleStatus);
     List<ScheduleDetail> details = Schedulers.toScheduleDetails(schedules);
     if (asScheduleSpec) {
       List<ScheduleSpecification> specs = ScheduleDetail.toScheduleSpecs(details);
@@ -713,7 +716,7 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
   }
 
   /**
-   * See {@link #getAllSchedules(HttpRequest, HttpResponder, String, String, String, String, String)}
+   * See {@link #getAllSchedules(HttpRequest, HttpResponder, String, String, String, String, String, String)}
    */
   @GET
   @Path("apps/{app-name}/schedules")
@@ -721,9 +724,11 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
                               @PathParam("namespace-id") String namespaceId,
                               @PathParam("app-name") String appName,
                               @QueryParam("format") String format,
-                              @QueryParam("trigger-type") String triggerType)
+                              @QueryParam("trigger-type") String triggerType,
+                              @QueryParam("schedule-status") String scheduleStatus)
     throws NotFoundException, BadRequestException {
-    doGetSchedules(responder, namespaceId, appName, ApplicationId.DEFAULT_VERSION, null, format, triggerType);
+    doGetSchedules(responder, namespaceId, appName, ApplicationId.DEFAULT_VERSION, null, format, triggerType,
+                   scheduleStatus);
   }
 
   /**
@@ -734,8 +739,11 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
    * @param appVersion version of the application to get schedules from
    * @param format format of the returned schedules. Use "detail" to return {@link ScheduleDetail}
    *               or "spec" to return {@link ScheduleSpecification}
-   * @param triggerType trigger type of returned schedules. If not specify, all schedules
+   * @param triggerType trigger type of returned schedules. If not specified, all schedules
    *                    are returned regardless of trigger type
+   * @param scheduleStatus the status of the schedule, must be values in
+   * {@link co.cask.cdap.internal.app.runtime.schedule.ProgramScheduleStatus}
+   *                       If not specified, all schedules are returned regardless of status
    */
   @GET
   @Path("apps/{app-name}/versions/{app-version}/schedules")
@@ -744,13 +752,15 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
                               @PathParam("app-name") String appName,
                               @PathParam("app-version") String appVersion,
                               @QueryParam("format") String format,
-                              @QueryParam("trigger-type") String triggerType)
+                              @QueryParam("trigger-type") String triggerType,
+                              @QueryParam("schedule-status") String scheduleStatus)
     throws NotFoundException, BadRequestException {
-    doGetSchedules(responder, namespaceId, appName, appVersion, null, format, triggerType);
+    doGetSchedules(responder, namespaceId, appName, appVersion, null, format, triggerType, scheduleStatus);
   }
 
   protected void doGetSchedules(HttpResponder responder, String namespace, String app, String version,
-                                @Nullable String workflow, @Nullable String format, @Nullable String triggerType)
+                                @Nullable String workflow, @Nullable String format, @Nullable String triggerType,
+                                String scheduleStatus)
     throws NotFoundException, BadRequestException {
     boolean asScheduleSpec = returnScheduleAsSpec(format);
     ApplicationId applicationId = new ApplicationId(namespace, app, version);
@@ -758,29 +768,29 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
     if (appSpec == null) {
       throw new NotFoundException(applicationId);
     }
-    List<ProgramSchedule> schedules;
+    Collection<ProgramScheduleRecord> schedules;
     if (workflow != null) {
       WorkflowId workflowId = applicationId.workflow(workflow);
       if (appSpec.getWorkflows().get(workflow) == null) {
         throw new NotFoundException(workflowId);
       }
-      schedules = programScheduler.listSchedules(workflowId);
+      schedules = programScheduler.listScheduleRecords(workflowId);
     } else {
-      schedules = programScheduler.listSchedules(applicationId);
+      schedules = programScheduler.listScheduleRecords(applicationId);
     }
 
     if (triggerType != null) {
       final ProtoTrigger.Type type = ProtoTrigger.Type.valueOfCategoryName(triggerType);
       // Filter schedules by trigger type
-      Iterator<ProgramSchedule> iterator = schedules.iterator();
+      Iterator<ProgramScheduleRecord> iterator = schedules.iterator();
       while (iterator.hasNext()) {
         // Remove the schedule if its trigger type does not match the given type
-        if (!((ProtoTrigger) iterator.next().getTrigger()).getType().equals(type)) {
+        if (!((ProtoTrigger) iterator.next().getSchedule().getTrigger()).getType().equals(type)) {
           iterator.remove();
         }
       }
     }
-
+    schedules = filterSchedulesByStatus(schedules, scheduleStatus);
     List<ScheduleDetail> details = Schedulers.toScheduleDetails(schedules);
     if (asScheduleSpec) {
       List<ScheduleSpecification> specs = ScheduleDetail.toScheduleSpecs(details);
@@ -788,6 +798,22 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
     } else {
       responder.sendJson(HttpResponseStatus.OK, details, Schedulers.SCHEDULE_DETAILS_TYPE, GSON_FOR_SCHEDULES);
     }
+  }
+
+  private Collection<ProgramScheduleRecord> filterSchedulesByStatus(Collection<ProgramScheduleRecord> scheduleRecords,
+                                                                    String scheduleStatus) {
+    if (scheduleStatus == null) {
+      return scheduleRecords;
+    }
+    List<ProgramScheduleRecord> filteredRecords = new ArrayList<>();
+    final ProgramScheduleStatus status = ProgramScheduleStatus.valueOf(scheduleStatus);
+    for (ProgramScheduleRecord record : scheduleRecords) {
+      // Add the schedule with the same status as the given status
+      if (record.getMeta().getStatus().equals(status)) {
+        filteredRecords.add(record);
+      }
+    }
+    return filteredRecords;
   }
 
   @PUT
@@ -957,14 +983,18 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
       trigger = new StreamSizeTrigger(streamId, streamSchedule.getDataTriggerMB());
     }
     List<Constraint> runConstraints = toConstraints(scheduleSpec.getSchedule().getRunConstraints());
-    return new ScheduleDetail(scheduleSpec.getSchedule().getName(), scheduleSpec.getSchedule().getDescription(),
-                              scheduleSpec.getProgram(), scheduleSpec.getProperties(), trigger, runConstraints, null);
+    return new ScheduleDetail(appId.getNamespace(), appId.getApplication(), appId.getVersion(),
+                              scheduleSpec.getSchedule().getName(), scheduleSpec.getSchedule().getDescription(),
+                              scheduleSpec.getProgram(), scheduleSpec.getProperties(), trigger, runConstraints,
+                              null, null);
   }
 
   private ScheduleDetail toScheduleDetail(ScheduleUpdateDetail updateDetail, ProgramSchedule existing) {
     ScheduleUpdateDetail.Schedule scheduleUpdate = updateDetail.getSchedule();
     if (scheduleUpdate == null) {
-      return new ScheduleDetail(null, null, null, updateDetail.getProperties(), null, null, null);
+      ScheduleId scheduleId = existing.getScheduleId();
+      return new ScheduleDetail(scheduleId.getNamespace(), scheduleId.getApplication(), scheduleId.getVersion(),
+                                null, null, null, updateDetail.getProperties(), null, null, null, null);
     }
     Trigger trigger = null;
     if (scheduleUpdate.getCronExpression() != null
@@ -974,7 +1004,8 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
                         " stream name and data trigger configuration in the same schedule update details %s. " +
                         "Schedule update detail must contain only one trigger.", updateDetail));
     }
-    NamespaceId namespaceId = existing.getProgramId().getNamespaceId();
+    ProgramId programId = existing.getProgramId();
+    NamespaceId namespaceId = programId.getNamespaceId();
     if (scheduleUpdate.getCronExpression() != null) {
       trigger = new TimeTrigger(updateDetail.getSchedule().getCronExpression());
     } else if (existing.getTrigger() instanceof StreamSizeTrigger) {
@@ -996,8 +1027,9 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
                       updateDetail, existing.getTrigger().getClass()));
     }
     List<Constraint> constraints = toConstraints(scheduleUpdate.getRunConstraints());
-    return new ScheduleDetail(null, scheduleUpdate.getDescription(), null,
-                              updateDetail.getProperties(), trigger, constraints, null);
+    return new ScheduleDetail(namespaceId.getNamespace(), programId.getApplication(), programId.getVersion(),
+                              null, scheduleUpdate.getDescription(), null,
+                              updateDetail.getProperties(), trigger, constraints, null, null);
   }
 
   private List<Constraint> toConstraints(RunConstraints runConstraints) {

@@ -84,11 +84,14 @@ public class Schedulers {
     return "partition:" + datasetId.getNamespace() + '.' + datasetId.getDataset();
   }
 
-  public static Set<String> triggerKeysForProgramStatus(ProgramId programId, Set<ProgramStatus> programStatuses) {
+  public static String triggerKeyForProgramStatus(ProgramId programId, ProgramStatus programStatus) {
+    return "programStatus:" + programId.toString() +  "." + programStatus.toString().toLowerCase();
+  }
+
+  public static Set<String> triggerKeysForProgramStatuses(ProgramId programId, Set<ProgramStatus> programStatuses) {
     ImmutableSet.Builder<String> triggerKeysBuilder = ImmutableSet.builder();
-    String programIdString = programId.toString();
     for (ProgramStatus status : programStatuses) {
-      triggerKeysBuilder.add(programIdString +  "." + status.toString().toLowerCase());
+      triggerKeysBuilder.add(triggerKeyForProgramStatus(programId, status));
     }
     return triggerKeysBuilder.build();
   }
@@ -170,7 +173,7 @@ public class Schedulers {
       @Nullable
       @Override
       public ScheduleDetail apply(@Nullable ProgramScheduleRecord input) {
-        return input == null ? null : input.getSchedule().toScheduleDetail();
+        return input == null ? null : input.toScheduleDetail();
       }
     });
   }

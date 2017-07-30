@@ -27,6 +27,10 @@ import com.google.common.annotations.VisibleForTesting;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+<<<<<<< HEAD
+=======
+import java.util.Map;
+>>>>>>> f406ea0... [CDAP-12232] Add composite trigger for scheduling
 import java.util.Set;
 
 /**
@@ -36,6 +40,16 @@ public class ProgramStatusTrigger extends ProtoTrigger.ProgramStatusTrigger impl
 
   public ProgramStatusTrigger(ProgramId programId, Set<ProgramStatus> programStatuses) {
     super(programId, programStatuses);
+  }
+
+  public ProgramStatusTrigger(ProgramId programId, Set<ProgramStatus> programStatuses,
+                              Map<String, String> runtimeArgsMap) {
+    super(programId, programStatuses, runtimeArgsMap);
+  }
+
+  public ProgramStatusTrigger(ProgramId programId, Map<String, String> runtimeArgsMap,
+                              ProgramStatus... programStatuses) {
+    super(programId, new HashSet<>(Arrays.asList(programStatuses)), runtimeArgsMap);
   }
 
   @VisibleForTesting
@@ -50,6 +64,6 @@ public class ProgramStatusTrigger extends ProtoTrigger.ProgramStatusTrigger impl
 
   @Override
   public Set<String> getTriggerKeys() {
-    return Schedulers.triggerKeysForProgramStatus(programId, programStatuses);
+    return Schedulers.triggerKeysForProgramStatuses(programId, programStatuses);
   }
 }
