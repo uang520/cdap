@@ -55,12 +55,12 @@ import javax.annotation.concurrent.ThreadSafe;
 /**
  * A {@link Transactional} for managing transactions for Spark job execution.
  */
-final class SparkTransactional implements Transactional {
+public final class SparkTransactional implements Transactional {
 
   /**
    * Enum to represent the type of transaction.
    */
-  enum TransactionType {
+  public enum TransactionType {
     /**
      * Explicit transaction, initiated by {@link Transactional#execute(TxRunnable)}
      */
@@ -155,7 +155,7 @@ final class SparkTransactional implements Transactional {
    * @param transactionType The {@link TransactionType} of the Spark transaction.
    *
    */
-  void execute(SparkTxRunnable runnable, TransactionType transactionType) throws TransactionFailureException {
+  public void execute(SparkTxRunnable runnable, TransactionType transactionType) throws TransactionFailureException {
     TransactionalDatasetContext txDatasetContext = activeDatasetContext.get();
     boolean needCommit = false;
 

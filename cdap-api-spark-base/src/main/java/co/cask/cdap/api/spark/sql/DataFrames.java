@@ -16,11 +16,9 @@
 
 package co.cask.cdap.api.spark.sql;
 
-import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.format.StructuredRecord;
 import co.cask.cdap.api.data.schema.Schema;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.types.ArrayType;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
@@ -28,19 +26,11 @@ import org.apache.spark.sql.types.MapType;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import scala.Function1;
-import scala.collection.JavaConversions;
 import scala.runtime.AbstractFunction1;
 
-import java.nio.ByteBuffer;
-import java.sql.Date;
-import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
 
 /**
  * Utility class for conversions between {@link DataType} and {@link Schema}.
@@ -99,7 +89,7 @@ public final class DataFrames {
    * @return a new {@link Row} instance
    */
   public static Row toRow(StructuredRecord record, StructType structType) {
-    return (Row) toRowValue(record, structType, "");
+    return new StructuredRecordRowConverter().toRow(record, structType);
   }
 
   /**
@@ -226,128 +216,6 @@ public final class DataFrames {
     }
     if (dataType.equals(DataTypes.DateType)) {
       return Schema.of(Schema.Type.LONG);
-    }
-
-    // Not support the CalendarInterval type for now, as there is no equivalent in Schema
-    throw new IllegalArgumentException("Unsupported data type: " + dataType.typeName());
-  }
-
-
-  /**
-   * Converts a value from {@link StructuredRecord} to a value acceptable by {@link Row}
-   *
-   * @param value the value to convert
-   * @param dataType the target {@link DataType} of the value
-   * @param path the current field path from the top. It is just for error message purpose.
-   * @return an object that is compatible with Spark {@link Row}.
-   */
-  private static Object toRowValue(@Nullable Object value, DataType dataType, String path) {
-    if (value == null) {
-      return null;
-    }
-    if (dataType.equals(DataTypes.NullType)) {
-      return null;
-    }
-    if (dataType.equals(DataTypes.BooleanType)) {
-      return value;
-    }
-    if (dataType.equals(DataTypes.ByteType)) {
-      return value;
-    }
-    if (dataType.equals(DataTypes.ShortType)) {
-      return value;
-    }
-    if (dataType.equals(DataTypes.IntegerType)) {
-      return value;
-    }
-    if (dataType.equals(DataTypes.LongType)) {
-      return value;
-    }
-    if (dataType.equals(DataTypes.FloatType)) {
-      return value;
-    }
-    if (dataType.equals(DataTypes.DoubleType)) {
-      return value;
-    }
-    if (dataType.equals(DataTypes.BinaryType)) {
-      if (value instanceof ByteBuffer) {
-        return Bytes.toBytes((ByteBuffer) value);
-      }
-      return value;
-    }
-    if (dataType.equals(DataTypes.StringType)) {
-      return value;
-    }
-    if (dataType instanceof ArrayType) {
-      @SuppressWarnings("unchecked")
-      Collection<Object> collection;
-      int size;
-      if (value instanceof Collection) {
-        collection = (Collection<Object>) value;
-      } else if (value.getClass().isArray()) {
-        collection = Arrays.asList((Object[]) value);
-      } else {
-        throw new IllegalArgumentException(
-          "Value type " + value.getClass() +
-            " is not supported as array type value. It must either be a Collection or an array");
-      }
-
-      List<Object> result = new ArrayList<>(collection.size());
-      String elementPath = path + "[]";
-      ArrayType arrayType = (ArrayType) dataType;
-
-      for (Object obj : collection) {
-        Object elementValue = toRowValue(obj, arrayType.elementType(), elementPath);
-        if (elementValue == null && !arrayType.containsNull()) {
-          throw new IllegalArgumentException("Null value is not allowed for array element at " + elementPath);
-        }
-        result.add(elementValue);
-      }
-      return JavaConversions.asScalaBuffer(result).toSeq();
-    }
-    if (dataType instanceof MapType) {
-      @SuppressWarnings("unchecked")
-      Map<Object, Object> map = (Map<Object, Object>) value;
-      Map<Object, Object> result = new LinkedHashMap<>(map.size());
-      String mapPath = path + "<>";
-      MapType mapType = (MapType) dataType;
-
-      for (Map.Entry<?, ?> entry : map.entrySet()) {
-        Object mapKey = toRowValue(entry.getKey(), mapType.keyType(), mapPath);
-        if (mapKey == null) {
-          throw new IllegalArgumentException("Null key is not allowed for map at " + mapPath);
-        }
-        Object mapValue = toRowValue(entry.getValue(), mapType.valueType(), mapPath);
-        if (mapValue == null && !mapType.valueContainsNull()) {
-          throw new IllegalArgumentException("Null value is not allowed for map at " + mapPath);
-        }
-        result.put(mapKey, mapValue);
-      }
-      return JavaConversions.mapAsScalaMap(result);
-    }
-    if (dataType instanceof StructType) {
-      StructuredRecord record = (StructuredRecord) value;
-      StructField[] fields = ((StructType) dataType).fields();
-      Object[] fieldValues = new Object[fields.length];
-      for (int i = 0; i < fields.length; i++) {
-        String fieldName = fields[i].name();
-        String fieldPath = path + "/" + fieldName;
-        Object fieldValue = toRowValue(record.get(fieldName), fields[i].dataType(), fieldPath);
-
-        if (fieldValue == null && !fields[i].nullable()) {
-          throw new IllegalArgumentException("Null value is not allowed for row field at " + fieldPath);
-        }
-        fieldValues[i] = fieldValue;
-      }
-      return RowFactory.create(fieldValues);
-    }
-
-    // Some special types in Spark SQL
-    if (dataType.equals(DataTypes.TimestampType)) {
-      return new Timestamp((long) value);
-    }
-    if (dataType.equals(DataTypes.DateType)) {
-      return new Date((long) value);
     }
 
     // Not support the CalendarInterval type for now, as there is no equivalent in Schema
