@@ -240,7 +240,7 @@ abstract class AbstractSparkExecutionContext(sparkClassLoader: SparkClassLoader,
                                                      datasetName: String,
                                                      arguments: Map[String, String],
                                                      splits: Option[Iterable[_ <: Split]]): RDD[(K, V)] = {
-    new DatasetRDD[K, V](sc, this, runtimeContext.getConfiguration, getNamespace, datasetName,
+    new DatasetRDD[K, V](sc, createDatasetCompute(), runtimeContext.getConfiguration, getNamespace, datasetName,
                          arguments, splits, getDriveHttpServiceBaseURI(sc))
   }
 
@@ -249,7 +249,7 @@ abstract class AbstractSparkExecutionContext(sparkClassLoader: SparkClassLoader,
                                                      datasetName: String,
                                                      arguments: Map[String, String],
                                                      splits: Option[Iterable[_ <: Split]]): RDD[(K, V)] = {
-    new DatasetRDD[K, V](sc, this, runtimeContext.getConfiguration, namespace,
+    new DatasetRDD[K, V](sc, createDatasetCompute(), runtimeContext.getConfiguration, namespace,
                          datasetName, arguments, splits, getDriveHttpServiceBaseURI(sc))
   }
 
@@ -337,9 +337,7 @@ abstract class AbstractSparkExecutionContext(sparkClassLoader: SparkClassLoader,
         case batchWritable: BatchWritable[_, _] =>
           submitDatasetWriteJob(rdd, namespace, datasetName, arguments, (dataset: Dataset) => {
             val writable = dataset.asInstanceOf[BatchWritable[K, V]]
-            (tuple: (K, V)) => {
-              writable.write(tuple._1, tuple._2)
-            }
+            (tuple: (K, V)) => writable.write(tuple._1, tuple._2)
           })
         case _ =>
           throw new IllegalArgumentException("Dataset is neither a OutputFormatProvider nor a BatchWritable")
@@ -358,11 +356,6 @@ abstract class AbstractSparkExecutionContext(sparkClassLoader: SparkClassLoader,
   }
 
   /**
-    * Returns the [[co.cask.cdap.app.runtime.spark.SparkTransactional]] for transactional execution.
-    */
-  protected[spark] def getSparkTransactional(): SparkTransactional = transactional
-
-  /**
     * Creates a factory function for creating `SparkMetricsWriter` from task context. It is expected
     * for sub-class to override to provide different implementation.
     */
@@ -372,6 +365,34 @@ abstract class AbstractSparkExecutionContext(sparkClassLoader: SparkClassLoader,
         override def incrementRecordWrite(count: Int): Unit = {
           // no-op
         }
+      }
+    }
+  }
+
+  /**
+    * Creates a [[co.cask.cdap.app.runtime.spark.DatasetCompute]] for the DatasetRDD to use.
+    */
+  protected[spark] def createDatasetCompute(): DatasetCompute = {
+    new DatasetCompute {
+      override def apply[T: ClassTag](namespace: String, datasetName: String,
+                                      arguments: Map[String, String], f: (Dataset) => T): T = {
+        val result = new Array[T](1)
+
+        // For RDD to compute partitions, a transaction is needed in order to gain access to dataset instance.
+        // It should either be using the active transaction (explicit transaction), or create a new transaction
+        // but leave it open so that it will be used for all stages in same job execution and get committed when
+        // the job ended.
+        transactional.execute(new SparkTxRunnable {
+          override def run(context: LineageDatasetContext) = {
+            val dataset: Dataset = context.getDataset(namespace, datasetName, arguments, AccessType.READ)
+            try {
+              result(0) = f(dataset)
+            } finally {
+              context.releaseDataset(dataset)
+            }
+          }
+        }, TransactionType.IMPLICIT_COMMIT_ON_JOB_END)
+        result(0)
       }
     }
   }

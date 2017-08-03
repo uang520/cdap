@@ -21,18 +21,14 @@ import java.net.URI
 import co.cask.cdap.api.data.DatasetInstantiationException
 import co.cask.cdap.api.data.batch.{BatchReadable, InputFormatProvider, Split}
 import co.cask.cdap.api.dataset.Dataset
-import co.cask.cdap.app.runtime.spark.SparkTransactional.TransactionType
-import co.cask.cdap.app.runtime.spark.{AbstractSparkExecutionContext, SparkClassLoader, SparkTxRunnable}
+import co.cask.cdap.app.runtime.spark.{DatasetCompute, SparkClassLoader}
 import co.cask.cdap.common.conf.ConfigurationUtil
-import co.cask.cdap.data.LineageDatasetContext
-import co.cask.cdap.data2.transaction.Transactions
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.mapreduce.InputFormat
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{Partition, SparkContext, TaskContext}
-import org.apache.tephra.TransactionFailureException
 
 import scala.annotation.meta.param
 import scala.collection.JavaConversions._
@@ -42,7 +38,7 @@ import scala.reflect.ClassTag
   * A [[org.apache.spark.rdd.RDD]] for reading data from [[co.cask.cdap.api.dataset.Dataset]].
   */
 class DatasetRDD[K: ClassTag, V: ClassTag](@(transient @param) sc: SparkContext,
-                                           @(transient @param) sec: AbstractSparkExecutionContext,
+                                           @(transient @param) datasetCompute: DatasetCompute,
                                            @(transient @param) hConf: Configuration,
                                            namespace: String,
                                            datasetName: String,
@@ -61,48 +57,33 @@ class DatasetRDD[K: ClassTag, V: ClassTag](@(transient @param) sc: SparkContext,
   }
 
   private def createDelegateRDD(): RDD[(K, V)] = {
-    var result: RDD[(K, V)] = null
-
-    try {
-      // For RDD to compute partitions, a transaction is needed in order to gain access to dataset instance.
-      // It should either be using the active transaction (explicit transaction), or create a new transaction
-      // but leave it open so that it will be used for all stages in same job execution and get committed when
-      // the job ended.
-      sec.getSparkTransactional().execute(new SparkTxRunnable {
-        override def run(context: LineageDatasetContext): Unit = {
-          val dataset = context.getDataset[Dataset](namespace, datasetName, arguments)
-          // Depends on whether it is a BatchReadable or an InputFormatProvider, constructs a corresponding
-          // RDD that this RDD delegates to
-          result = dataset match {
-            case br: BatchReadable[_, _] => {
-              val batchReadable = br.asInstanceOf[BatchReadable[K, V]]
-              new BatchReadableRDD[K, V](sc, batchReadable, namespace, datasetName, arguments,
-                                         splits.getOrElse(batchReadable.getSplits.toIterable), txServiceBaseURI)
-            }
-
-            case inputFormatProvider: InputFormatProvider => {
-              // Use the Spark newAPIHadoopRDD
-              val inputFormatClassName = Option(inputFormatProvider.getInputFormatClassName).getOrElse(
-                throw new DatasetInstantiationException("No input format class from dataset '" + datasetName + "'"))
-              val conf = ConfigurationUtil.setAll(inputFormatProvider.getInputFormatConfiguration,
-                                                  new Configuration(hConf))
-              val inputFormatClass = SparkClassLoader.findFromContext()
-                .loadClass(inputFormatClassName)
-                .asInstanceOf[Class[InputFormat[K, V]]]
-
-              val keyClass: Class[K] = implicitly[ClassManifest[K]].runtimeClass.asInstanceOf[Class[K]]
-              val valueClass: Class[V] = implicitly[ClassManifest[V]].runtimeClass.asInstanceOf[Class[V]]
-              sc.newAPIHadoopRDD(conf, inputFormatClass, keyClass, valueClass)
-            }
-
-            case _ => throw new IllegalArgumentException("Unsupport dataset type " + dataset.getClass)
-          }
+    datasetCompute(namespace, datasetName, arguments, (dataset: Dataset) => {
+      // Depends on whether it is a BatchReadable or an InputFormatProvider, constructs a corresponding
+      // RDD that this RDD delegates to
+      dataset match {
+        case br: BatchReadable[_, _] => {
+          val batchReadable = br.asInstanceOf[BatchReadable[K, V]]
+          new BatchReadableRDD[K, V](sc, batchReadable, namespace, datasetName, arguments,
+                                     splits.getOrElse(batchReadable.getSplits.toIterable), txServiceBaseURI)
         }
-      }, TransactionType.IMPLICIT_COMMIT_ON_JOB_END)
-      result
-    } catch {
-      case t: TransactionFailureException => throw Transactions.propagate(t, classOf[IllegalArgumentException],
-                                                                          classOf[DatasetInstantiationException])
-    }
+
+        case inputFormatProvider: InputFormatProvider => {
+          // Use the Spark newAPIHadoopRDD
+          val inputFormatClassName = Option(inputFormatProvider.getInputFormatClassName).getOrElse(
+            throw new DatasetInstantiationException("No input format class from dataset '" + datasetName + "'"))
+          val conf = ConfigurationUtil.setAll(inputFormatProvider.getInputFormatConfiguration,
+                                              new Configuration(hConf))
+          val inputFormatClass = SparkClassLoader.findFromContext()
+            .loadClass(inputFormatClassName)
+            .asInstanceOf[Class[InputFormat[K, V]]]
+
+          val keyClass: Class[K] = implicitly[ClassManifest[K]].runtimeClass.asInstanceOf[Class[K]]
+          val valueClass: Class[V] = implicitly[ClassManifest[V]].runtimeClass.asInstanceOf[Class[V]]
+          sc.newAPIHadoopRDD(conf, inputFormatClass, keyClass, valueClass)
+        }
+
+        case _ => throw new IllegalArgumentException("Unsupport dataset type " + dataset.getClass)
+      }
+    })
   }
 }
