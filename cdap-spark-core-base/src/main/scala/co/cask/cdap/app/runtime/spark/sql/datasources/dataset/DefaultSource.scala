@@ -19,18 +19,19 @@ package co.cask.cdap.app.runtime.spark.sql.datasources.dataset
 import java.lang.reflect.Type
 import javax.annotation.Nullable
 
-import co.cask.cdap.api.data.batch.RecordScannable
+import co.cask.cdap.api.data.batch.{RecordScannable, RecordWritable}
 import co.cask.cdap.api.data.format.StructuredRecord
 import co.cask.cdap.api.data.schema.{Schema, UnsupportedTypeException}
 import co.cask.cdap.api.dataset.{Dataset, DatasetProperties, DatasetSpecification}
-import co.cask.cdap.api.spark.sql.DataFrames
+import co.cask.cdap.api.spark.sql.{DataFrames, StructuredRecordRowConverter}
 import co.cask.cdap.app.runtime.spark.{SparkClassLoader, SparkRuntimeContext, SparkRuntimeContextProvider}
 import co.cask.cdap.data2.metadata.lineage.AccessType
 import co.cask.cdap.internal.io.ReflectionSchemaGenerator
 import co.cask.cdap.proto.id.{DatasetId, NamespaceId}
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.{DataType, StructType}
-import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
+import org.apache.spark.sql.{DataFrame, Row, SQLContext, SaveMode}
 
 import scala.collection.JavaConversions._
 
@@ -77,18 +78,42 @@ class DefaultSource extends RelationProvider
                               mode: SaveMode,
                               parameters: Map[String, String],
                               data: DataFrame): BaseRelation = {
-//    val runtimeContext = SparkRuntimeContextProvider.get()
-//    val datasetId = getDatasetId(parameters, runtimeContext.getProgramRunId.getNamespaceId)
-//    val datasetSpec = runtimeContext.getDatasetFramework.getDatasetSpec(datasetId)
-//    val schema = getSchema(datasetId, datasetSpec, parameters, runtimeContext)
-//
-//    // The dataframe should have the same schema as needed by the dataset
-//    require(schema == data.schema,
-//            s"DataFrame schema doesn't match the schema of dataset $datasetId. " +
-//              s"Dataset schema is $schema and dataframe schema is ${data.schema}")
-//
-//
-    null
+    val runtimeContext = SparkRuntimeContextProvider.get()
+    val datasetId = getDatasetId(parameters, runtimeContext.getProgramRunId.getNamespaceId)
+    val datasetSpec = runtimeContext.getDatasetFramework.getDatasetSpec(datasetId)
+
+    // TODO: Validate schema
+
+    val sparkClassLoader = SparkClassLoader.findFromContext()
+    sparkClassLoader.loadClass(datasetSpec.getType) match {
+      // RecordWritable Dataset
+      case cls if classOf[RecordWritable[_]].isAssignableFrom(cls) => {
+        val sec = sparkClassLoader.getSparkExecutionContext(false)
+        sec.saveAsDataset(data.rdd, datasetId.getNamespace, datasetId.getDataset,
+                          parameters, (dataset: Dataset, rdd: RDD[Row]) => {
+            // TODO: Handle the case when the type is not StructuredRecord
+            val recordRDD = rdd.mapPartitions(itor => new Iterator[StructuredRecord]() {
+              private val converter = new StructuredRecordRowConverter
+
+              override def hasNext: Boolean = itor.hasNext
+              override def next(): StructuredRecord = {
+                val row = itor.next()
+                converter.fromRow(row, row.schema)
+              }
+            })
+            sec.submitDatasetWriteJob(recordRDD, datasetId.getNamespace, datasetId.getDataset,
+                                      parameters, (dataset: Dataset) => {
+                val writable = dataset.asInstanceOf[RecordWritable[StructuredRecord]]
+                (record: StructuredRecord) => writable.write(record)
+            })
+          })
+      }
+
+      // TODO: Handle FileSet
+      case _ => throw new IllegalArgumentException("Unsupport type " + datasetSpec.getType)
+    }
+
+    createRelation(sqlContext, parameters, data.schema)
   }
 
   /**

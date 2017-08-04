@@ -19,4 +19,4 @@ package co.cask.cdap.spark.app
 /**
   * A case class representing a person.
   */
-case class Person(id: String, name: String, age: Int) extends Serializable
+case class Person(name: String, age: Int) extends Serializable
