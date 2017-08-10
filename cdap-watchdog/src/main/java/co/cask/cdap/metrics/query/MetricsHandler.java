@@ -17,9 +17,17 @@
 package co.cask.cdap.metrics.query;
 
 import co.cask.cdap.common.conf.Constants;
+import co.cask.cdap.proto.MetricQueryRequest;
+import co.cask.cdap.proto.MetricTagValue;
+import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.http.AbstractHttpHandler;
 import co.cask.http.HttpResponder;
 import com.google.common.base.Charsets;
+import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Inject;
@@ -30,8 +38,11 @@ import org.jboss.netty.handler.codec.http.QueryStringDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nullable;
+import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.QueryParam;
@@ -43,6 +54,12 @@ import javax.ws.rs.QueryParam;
 public class MetricsHandler extends AbstractHttpHandler {
   private static final Logger LOG = LoggerFactory.getLogger(MetricsHandler.class);
   private static final Gson GSON = new Gson();
+  private static final Map<String, String> METRICS_PROCESSOR_TAGS_MAP =
+    ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, NamespaceId.SYSTEM.getNamespace(),
+                    Constants.Metrics.Tag.COMPONENT, Constants.Service.METRICS_PROCESSOR);
+  private static final List<MetricTagValue> METRICS_PROCESSOR_TAGS_LIST =
+    ImmutableList.of(new MetricTagValue(Constants.Metrics.Tag.NAMESPACE, NamespaceId.SYSTEM.getNamespace()),
+                     new MetricTagValue(Constants.Metrics.Tag.COMPONENT, Constants.Service.METRICS_PROCESSOR));
 
   private final MetricsQueryHelper metricsQueryHelper;
 
@@ -108,5 +125,24 @@ public class MetricsHandler extends AbstractHttpHandler {
       LOG.error("Exception querying metrics ", e);
       responder.sendString(HttpResponseStatus.INTERNAL_SERVER_ERROR, "Internal error while querying for metrics");
     }
+  }
+
+  @GET
+  @Path("/processor/status")
+  public void processorStatus(HttpRequest request, HttpResponder responder) throws Exception {
+    List<String> delayMetrics =
+      Lists.newArrayList(Iterables.filter(metricsQueryHelper.getMetrics(METRICS_PROCESSOR_TAGS_LIST),
+                                          new Predicate<String>() {
+                                            @Override
+                                            public boolean apply(@Nullable String input) {
+                                              return input.endsWith(Constants.MetricsProcessor.DELAY_METRIC_SUFFIX);
+                                            }
+                                          }));
+
+    MetricQueryRequest metricQueryRequest =
+      new MetricQueryRequest(METRICS_PROCESSOR_TAGS_MAP, delayMetrics, new ArrayList<String>());
+    metricsQueryHelper.setTimeRangeInQueryRequest(metricQueryRequest,
+                                                  new QueryStringDecoder(request.getUri()).getParameters());
+    responder.sendJson(HttpResponseStatus.OK, metricsQueryHelper.executeQuery(metricQueryRequest));
   }
 }
