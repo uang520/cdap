@@ -154,7 +154,7 @@ public class MetricsQueryHelper {
     return metricStore;
   }
 
-  private Collection<String> getMetrics(List<MetricTagValue> tagValues) throws Exception {
+   Collection<String> getMetrics(List<MetricTagValue> tagValues) throws Exception {
     // we want to search the entire range, so startTimestamp is '0' and end Timestamp is Integer.MAX_VALUE and
     // limit is -1 , to include the entire search result.
     MetricSearchQuery searchQuery =
@@ -229,7 +229,7 @@ public class MetricsQueryHelper {
     return queryRequest;
   }
 
-  private void setTimeRangeInQueryRequest(MetricQueryRequest request, Map<String, List<String>> queryTimeParams) {
+  void setTimeRangeInQueryRequest(MetricQueryRequest request, Map<String, List<String>> queryTimeParams) {
     Long start =
       queryTimeParams.containsKey(PARAM_START_TIME) ?
         TimeMathParser.parseTimeInSeconds(queryTimeParams.get(PARAM_START_TIME).get(0)) : null;
@@ -303,7 +303,7 @@ public class MetricsQueryHelper {
     return null;
   }
 
-  private MetricQueryResult executeQuery(MetricQueryRequest queryRequest) throws Exception {
+  MetricQueryResult executeQuery(MetricQueryRequest queryRequest) throws Exception {
     if (queryRequest.getMetrics().size() == 0) {
       throw new IllegalArgumentException("Missing metrics parameter in the query");
     }
