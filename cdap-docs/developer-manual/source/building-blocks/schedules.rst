@@ -104,11 +104,14 @@ Events and Notifications
 ========================
 
 Triggers are fired by events such as creation of a new partition in a dataset, or
-fulfillment of a cron expression of a time trigger. Events reach the scheduling system as
-notifications on the Transactional Messaging System (TMS). A single notification can
-contain multiple events, for example, two new partitions for a dataset. For a time
-trigger, the event contains the logical start time, that is, the time when the cron
+fulfillment of a cron expression of a time trigger, or the status of a program. 
+Events reach the scheduling system as notifications on the Transactional Messaging System (TMS). 
+A single notification can contain multiple events, for example, two new partitions for a dataset.
+For a time trigger, the event contains the logical start time, that is, the time when the cron
 expression fired. This logical start time is given to the workflow as a runtime argument.
+For a program status trigger, the event contains the triggering program status, the workflow token
+(if the triggering program was a workflow), and the re-mapped runtime arguments from the
+triggering program.
 
 .. _schedules-run-constraints:
 
@@ -156,6 +159,23 @@ A trigger can be based on time or data availability, These are the available tri
   ``TimePartitionedFileSet``). While a single notification for new partitions in the
   dataset suffices to to create a job for the schedule, it will remain in *pending trigger*
   state until enough partitions have arrived to exceed the ``numPartitions`` parameter.
+- ``.triggerOnProgramStatus(String namespace, String application, String applicationVersion,
+                            ProgramType type, String program,
+                            ProgramStatus... programStatuses)``: This is triggered when
+  the given program in the given namespace, application, and application version 
+  transitions to any one of the given program statuses.
+- ``.triggerOnProgramStatus(String namespace, String application, ProgramType type, 
+                            String program, ProgramStatus... programStatuses)``: 
+  This is triggered when the given program in the given namespace and application
+  transitions to any one of the given program statuses.
+- ``.triggerOnProgramStatus(String application, ProgramType type, String program,
+                            ProgramStatus... programStatuses)``: 
+  This is triggered when the given program in the given application, but the same namespace
+  and application version transitions to any one of the given program statuses.
+- ``.triggerOnProgramStatus(ProgramType type, String program, 
+                            ProgramStatus... programStatuses)``: This is triggered when
+  the given program in the same namespace, application, and application version
+  transitions to any one of the given program statuses.
 
 .. _schedules-examples:
 
@@ -171,7 +191,7 @@ to the time window between 10pm and 6am::
 
 The same as before, but ensure that it runs only once in that time window::
 
-  schedule(buildSchedule("runOnlyAtNight", ProgramType.WORKFLOW, "clanupWorkflow")
+  schedule(buildSchedule("runOnlyAtNight", ProgramType.WORKFLOW, "cleanupWorkflow")
              .withTimeWindow("22:00", "06:00”).waitUntilMet()
              .withDurationSinceLastRun(6, TimeUnit.HOURS).abortIfNotMet()
              .triggerOnPartitions("myDataset", 1));
@@ -182,6 +202,16 @@ to allow additional data to arrive::
   schedule(buildSchedule("onPartitionWithDelay", ProgramType.WORKFLOW, "myWorkflow")
              .withDelay(15, TimeUnit.MINUTES)
              .triggerOnPartitions("myDataset", 4));
+
+To schedule a workflow named "cleanupWorkflow" to run whenever "dataProcessingWorkflow"
+(in the same namespace, application, and application version as "cleanupWorkflow")
+fails, and pass in the `src` directory in the "dataProcessingWorkflow" as the 
+`cleanup_dir` directory::
+
+  schedule(buildSchedule("onDataProcessingFail", ProgramType.WORKFLOW, "cleanupWorkflow")
+              .withProperties(ImmutableMap.of("triggering.properties.mapping", 
+                                              ImmutableMap.of("cleanup_dir", "src"))
+              .triggerOnProgramStatus(ProgramType.WORKFLOW, "dataProcessingWorkflow");
 
 To ensure that the workflow runs at least once per hour::
 

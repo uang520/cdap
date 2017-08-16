@@ -798,6 +798,9 @@ The request body is a JSON object specifying the details of the schedule to be c
     {
       "name": "<name of the schedule>",
       "description": "<schedule description>",
+      "namespace": "<namespace of the schedule>",
+      "application": "<application of the schedule>",
+      "applicationVersion": "<application version of the schedule>",
       "program": {
         "programName": "<name of the program>",
         "programType": "WORKFLOW"
@@ -818,7 +821,8 @@ The request body is a JSON object specifying the details of the schedule to be c
         "type": "<trigger type>",
         ...
       },
-      "timeoutMillis": <timeout in milliseconds>
+      "timeoutMillis": <timeout in milliseconds>,
+      "scheduleStatus": "<status of the schedule, SUSPENDED or SCHEDULED>"
     }
 
 where a trigger is either a time trigger::
@@ -838,6 +842,21 @@ or a partition trigger::
       },
       "numPartitions": <required number of partitions>
     }
+
+or a program status trigger::
+
+    {
+      "programId": {
+          "namespace": "<namespace of the program>",
+          "application": "<application name of the program>",
+          "version": "<application version of the program>",
+          "type": "<type of the program>",
+          "entity": "PROGRAM",
+          "program": "<name of the program>"
+      },
+      "programStatuses": [ <COMPLETED>, <FAILED>, <KILLED> ],
+      "type": "PROGRAM_STATUS"
+    },
 
 and a constraint can be one of::
 
