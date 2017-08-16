@@ -15,7 +15,7 @@
  */
 
 class HydratorPlusPlusLeftPanelCtrl {
-  constructor($scope, $stateParams, rVersion, HydratorPlusPlusConfigStore, HydratorPlusPlusLeftPanelStore, HydratorPlusPlusPluginActions, DAGPlusPlusFactory, DAGPlusPlusNodesActionsFactory, NonStorePipelineErrorFactory, $uibModal, myAlertOnValium, $state, $q, rArtifacts, PluginTemplatesDirActions, HydratorPlusPlusOrderingFactory, LEFTPANELSTORE_ACTIONS, myHelpers, $timeout, mySettings) {
+  constructor($scope, $stateParams, rVersion, HydratorPlusPlusConfigStore, HydratorPlusPlusLeftPanelStore, HydratorPlusPlusPluginActions, DAGPlusPlusFactory, DAGPlusPlusNodesActionsFactory, NonStorePipelineErrorFactory, $uibModal, myAlertOnValium, $state, $q, rArtifacts, PluginTemplatesDirActions, HydratorPlusPlusOrderingFactory, LEFTPANELSTORE_ACTIONS, myHelpers, $timeout, mySettings, PipelineAvailablePluginsActions) {
     this.$state = $state;
     this.$scope = $scope;
     this.$stateParams = $stateParams;
@@ -33,6 +33,7 @@ class HydratorPlusPlusLeftPanelCtrl {
     this.LEFTPANELSTORE_ACTIONS = LEFTPANELSTORE_ACTIONS;
     this.myHelpers = myHelpers;
     this.mySettings = mySettings;
+    this.PipelineAvailablePluginsActions = PipelineAvailablePluginsActions;
 
 
     this.pluginsMap = [];
@@ -128,6 +129,16 @@ class HydratorPlusPlusLeftPanelCtrl {
         { namespace: this.$stateParams.namespace },
         { namespace: this.$stateParams.namespace, pipelineType: this.selectedArtifact.name, }
       )
+    );
+
+    // TEST
+    this.PipelineAvailablePluginsActions.fetchPlugins(
+      {
+        namespace: this.$stateParams.namespace,
+        pipelineType: this.selectedArtifact.name,
+        version: this.rVersion.version,
+        scope: this.$scope
+      }
     );
 
     this.leftpanelStore.dispatch(
@@ -332,6 +343,5 @@ class HydratorPlusPlusLeftPanelCtrl {
   }
 }
 
-HydratorPlusPlusLeftPanelCtrl.$inject = ['$scope', '$stateParams', 'rVersion', 'HydratorPlusPlusConfigStore', 'HydratorPlusPlusLeftPanelStore', 'HydratorPlusPlusPluginActions', 'DAGPlusPlusFactory', 'DAGPlusPlusNodesActionsFactory', 'NonStorePipelineErrorFactory',  '$uibModal', 'myAlertOnValium', '$state', '$q', 'rArtifacts', 'PluginTemplatesDirActions', 'HydratorPlusPlusOrderingFactory', 'LEFTPANELSTORE_ACTIONS', 'myHelpers', '$timeout', 'mySettings'];
 angular.module(PKG.name + '.feature.hydrator')
   .controller('HydratorPlusPlusLeftPanelCtrl', HydratorPlusPlusLeftPanelCtrl);

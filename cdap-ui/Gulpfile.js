@@ -303,8 +303,8 @@ gulp.task('js:app:babel', function() {
 gulp.task('js:app', ['js:app:babel', 'js:app:hydrator', 'js:app:tracker', 'js:app:logviewer']);
 gulp.task('watch:js:app', [
   'watch:js:app:hydrator',
-  'watch:js:app:tracker',
-  'watch:js:app:logviewer'
+  // 'watch:js:app:tracker',
+  // 'watch:js:app:logviewer'
 ]);
 gulp.task('polyfill', function () {
   return gulp.src([
@@ -323,8 +323,10 @@ gulp.task('img', function() {
 
 gulp.task('html:partials', function() {
   return gulp.src([
-    './app/{hydrator,tracker,logviewer}/**/*.html',
-    './app/features/{userprofile,}/**/*.html',
+    // './app/{hydrator,tracker,logviewer}/**/*.html',
+    // './app/features/{userprofile,}/**/*.html',
+    './app/{hydrator,}/**/*.html',
+
     '!./app/tracker/tracker.html',
     '!./app/hydrator/hydrator.html',
     '!./app/logviewer/logviewer.html'

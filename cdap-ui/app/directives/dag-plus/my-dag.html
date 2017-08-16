@@ -106,6 +106,7 @@
                data-type="{{node.type}}"
                id="{{node.name}}"
                ng-class="{'wrangler': node.plugin.name === 'Wrangler'}">
+               <pre>{{node | json: 4}}</pre>
           <div class="node"
                 ng-mouseenter="DAGPlusPlusCtrl.nodeMouseEnter(node)"
                 ng-mouseleave="DAGPlusPlusCtrl.nodeMouseLeave(node)">
