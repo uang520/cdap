@@ -415,62 +415,68 @@ angular.module(PKG.name + '.commons')
       DAGPlusPlusNodesActionsFactory.setConnections($scope.connections);
     };
 
-    function toggleConnections(seletectedObj) {
+    function toggleConnections(selectedObj) {
       if (vm.isDisabled) { return; }
 
-      // is endpoint
-      if (seletectedObj.endpoint) {
-        if (seletectedObj.connections && seletectedObj.connections.length > 0) {
-          let connectionsToToggle;
-
-          // If it's an endpoint on a condition node, then only toggle connections
-          // from that endpoint. For other nodes, toggle all the connections of the
-          // source that this endpoint belongs to
-
-          if (seletectedObj.endpoint.canvas.classList.contains('condition-endpoint')) {
-            connectionsToToggle = seletectedObj.connections;
-          } else {
-              connectionsToToggle = vm.instance.getConnections({
-              source: seletectedObj.connections[0].sourceId
-            });
-          }
-
-          let notYetSelectedConnections = _.difference(connectionsToToggle, selectedConnections);
-
-          // This is to toggle all connections coming from an endpoint.
-          // If zero, one or more (but not all) of the connections are already selected,
-          // then just select the remaining ones. Else if they're all selected,
-          // then unselect them.
-
-          if (notYetSelectedConnections.length !== 0) {
-            notYetSelectedConnections.forEach(connection => {
-              selectedConnections.push(connection);
-              connection.getConnector().canvas.addEventListener('contextmenu', openContextMenu);
-              connection.addType('selected');
-            });
-          } else {
-            connectionsToToggle.forEach(connection => {
-              selectedConnections.splice(selectedConnections.indexOf(connection), 1);
-              removeContextMenuEventListener(connection);
-              connection.removeType('selected');
-            });
-          }
-        }
-
       // is connection
-      } else {
-        if (vm.isDisabled) { return; }
-
-        if (selectedConnections.indexOf(seletectedObj) === -1) {
-          selectedConnections.push(seletectedObj);
-          seletectedObj.getConnector().canvas.addEventListener('contextmenu', openContextMenu);
-        } else {
-          selectedConnections.splice(selectedConnections.indexOf(seletectedObj), 1);
-          removeContextMenuEventListener(seletectedObj);
-        }
-        seletectedObj.toggleType('selected');
-
+      if (selectedObj.sourceId && selectedObj.targetId) {
+        toggleConnection(selectedObj);
+        return;
       }
+
+      // else is endpoint
+      if (selectedObj.connections && selectedObj.connections.length > 0) {
+        if (selectedObj.isTarget) {
+          toggleConnection(selectedObj.connections[0]);
+          return;
+        }
+
+        let connectionsToToggle;
+
+        // If it's an endpoint on a condition node, then only toggle connections
+        // from that endpoint. For other nodes, toggle all the connections of the
+        // source that this endpoint belongs to
+
+        if (selectedObj.endpoint.canvas.classList.contains('condition-endpoint')) {
+          connectionsToToggle = selectedObj.connections;
+        } else {
+            connectionsToToggle = vm.instance.getConnections({
+            source: selectedObj.connections[0].sourceId
+          });
+        }
+
+        let notYetSelectedConnections = _.difference(connectionsToToggle, selectedConnections);
+
+        // This is to toggle all connections coming from an endpoint.
+        // If zero, one or more (but not all) of the connections are already selected,
+        // then just select the remaining ones. Else if they're all selected,
+        // then unselect them.
+
+        if (notYetSelectedConnections.length !== 0) {
+          notYetSelectedConnections.forEach(connection => {
+            selectedConnections.push(connection);
+            connection.getConnector().canvas.addEventListener('contextmenu', openContextMenu);
+            connection.addType('selected');
+          });
+        } else {
+          connectionsToToggle.forEach(connection => {
+            selectedConnections.splice(selectedConnections.indexOf(connection), 1);
+            removeContextMenuEventListener(connection);
+            connection.removeType('selected');
+          });
+        }
+      }
+    }
+
+    function toggleConnection(connObj) {
+      if (selectedConnections.indexOf(connObj) === -1) {
+        selectedConnections.push(connObj);
+        connObj.getConnector().canvas.addEventListener('contextmenu', openContextMenu);
+      } else {
+        selectedConnections.splice(selectedConnections.indexOf(connObj), 1);
+        removeContextMenuEventListener(connObj);
+      }
+      connObj.toggleType('selected');
     }
 
     function onStartDetach() {
