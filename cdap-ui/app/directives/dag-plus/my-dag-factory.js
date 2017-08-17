@@ -23,7 +23,11 @@ angular.module(PKG.name + '.commons')
         outlineColor: 'transparent',
         outlineWidth: 4
       },
-      HoverPaintStyle: { strokeStyle: '#58b7f6', lineWidth: 4 }
+      HoverPaintStyle: {
+        strokeStyle: '#58b7f6',
+        lineWidth: 4,
+        dashstyle: 'solid'
+      }
     };
 
     var selectedConnectionStyle = {
@@ -31,8 +35,29 @@ angular.module(PKG.name + '.commons')
         strokeStyle: '#58b7f6',
         lineWidth: 4,
         outlineColor: 'transparent',
-        outlineWidth: 4
+        outlineWidth: 4,
+        dashstyle: 'solid'
       }
+    };
+
+    var dashedConnectionStyle = {
+      paintStyle: { dashstyle: '2 4'}
+    };
+
+    var conditionTrueConnectionStyle = {
+      strokeStyle: '#0099ff',
+      lineWidth: 2,
+      outlineColor: 'transparent',
+      outlineWidth: 4,
+      dashstyle: '2 4'
+    };
+
+    var conditionFalseConnectionStyle = {
+      strokeStyle: '#999999',
+      lineWidth: 2,
+      outlineColor: 'transparent',
+      outlineWidth: 4,
+      dashstyle: '2 4'
     };
 
     var defaultSettings = angular.extend({
@@ -50,10 +75,17 @@ angular.module(PKG.name + '.commons')
       ]
     }, defaultConnectionStyle);
 
+    // var conditionStageSettings = {
+    //   anchor: [[1, 0.5, 1, 0, 5, 0], [0.5, 1, 0, 1, 0, 5]]
+    // };
+
     function getSettings() {
       var settings = {
         default: defaultSettings,
-        selectedConnectionStyle: selectedConnectionStyle
+        selectedConnectionStyle,
+        conditionTrueConnectionStyle,
+        conditionFalseConnectionStyle,
+        dashedConnectionStyle
       };
 
       return settings;
@@ -188,7 +220,8 @@ angular.module(PKG.name + '.commons')
         'cdcdatabase': 'icon-database',
         'cdchbase': 'icon-hbase',
         'cdckudu': 'icon-apachekudu',
-        'changetrackingsqlserver': 'icon-database'
+        'changetrackingsqlserver': 'icon-database',
+        'simplecondition': 'fa-question-circle-o'
       };
 
       var pluginName = plugin.toLowerCase();
