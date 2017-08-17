@@ -154,19 +154,6 @@ public class Schedulers {
   /**
    * Convert a list of program schedules into a list of schedule details.
    */
-  public static List<ScheduleDetail> toScheduleDetails(List<ProgramSchedule> schedules) {
-    return Lists.transform(schedules, new Function<ProgramSchedule, ScheduleDetail>() {
-      @Nullable
-      @Override
-      public ScheduleDetail apply(@Nullable ProgramSchedule input) {
-        return input == null ? null : input.toScheduleDetail();
-      }
-    });
-  }
-
-  /**
-   * Convert a list of program schedules into a list of schedule details.
-   */
   public static List<ScheduleDetail> toScheduleDetails(Collection<ProgramScheduleRecord> schedules) {
     List<ProgramScheduleRecord> scheduleList = new ArrayList<>(schedules);
     return Lists.transform(scheduleList, new Function<ProgramScheduleRecord, ScheduleDetail>() {
