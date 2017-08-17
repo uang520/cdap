@@ -455,7 +455,7 @@ angular.module(PKG.name + '.commons')
         if (notYetSelectedConnections.length !== 0) {
           notYetSelectedConnections.forEach(connection => {
             selectedConnections.push(connection);
-            connection.getConnector().canvas.addEventListener('contextmenu', openContextMenu);
+            connection.connector.canvas.addEventListener('contextmenu', openContextMenu);
             connection.addType('selected');
           });
         } else {
@@ -471,7 +471,7 @@ angular.module(PKG.name + '.commons')
     function toggleConnection(connObj) {
       if (selectedConnections.indexOf(connObj) === -1) {
         selectedConnections.push(connObj);
-        connObj.getConnector().canvas.addEventListener('contextmenu', openContextMenu);
+        connObj.connector.canvas.addEventListener('contextmenu', openContextMenu);
       } else {
         selectedConnections.splice(selectedConnections.indexOf(connObj), 1);
         removeContextMenuEventListener(connObj);
@@ -685,7 +685,7 @@ angular.module(PKG.name + '.commons')
     }
 
     function removeContextMenuEventListener(connection) {
-      connection.getConnector().canvas.removeEventListener('contextmenu', openContextMenu);
+      connection.connector.canvas.removeEventListener('contextmenu', openContextMenu);
     }
 
     jsPlumb.ready(function() {
@@ -794,11 +794,10 @@ angular.module(PKG.name + '.commons')
             return conn.from === conditionNode && conn.condition === false;
           });
 
-          if (trueConnIndex === -1 || falseConnIndex === -1 || trueConnIndex < falseConnIndex) { return; }
+          if (trueConnIndex === -1 || falseConnIndex === -1 || trueConnIndex === falseConnIndex - 1) { return; }
 
-          let tempObj = Object.assign({}, $scope.connections[trueConnIndex]);
-          $scope.connections[trueConnIndex] = $scope.connections[falseConnIndex];
-          $scope.connections[falseConnIndex] = tempObj;
+          let falseConn = $scope.connections.splice(falseConnIndex, 1)[0];
+          $scope.connections.splice(trueConnIndex + 1, 0, falseConn);
           swappedConnections = true;
         });
 
