@@ -24,6 +24,7 @@
 @node-box-height-big: 100px;
 @condition-box-width: 105px;
 @condition-box-height: 100px;
+@condition-box-height-big: 110px;
 @endpoint-circle-radius: 7px;
 
 .increase-border-height-width(@currentHeight, @currentWidth) {
@@ -122,15 +123,17 @@ my-dag-plus {
               top: initial;
             }
           }
-
-          .condition-endpoint {
-            cursor: initial;
-          }
         }
       }
 
       .jsplumb-connector {
         cursor: initial;
+      }
+
+      .jsplumb-endpoint {
+        &.condition-endpoint {
+          cursor: initial;
+        }
       }
     }
 
@@ -385,13 +388,12 @@ my-dag-plus {
         color: @spark-plugins-color;
       }
       &.condition {
-        /* color: error-transform; */
+        color: @condition-plugin-color;
         left: 30vw;
 
         width: @condition-box-width;
         height: @condition-box-height;
 
-        color: @condition-plugin-color;
         .border-color-hover(@condition-box-height, @condition-box-width);
 
         .node {

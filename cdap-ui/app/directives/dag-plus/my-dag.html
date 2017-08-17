@@ -147,12 +147,7 @@
               <div class="node-icon fa {{node.icon}}"></div>
               <div class="node-metadata">
                 <div class="node-name"
-                      ng-bind="node.plugin.label || node.name | myEllipsis: 15"
-                      ng-if="node.type !== 'condition'">
-                </div>
-                <div class="node-name"
-                      ng-if="node.type === 'condition'">
-                  Condition
+                      ng-bind="node.plugin.label || node.name | myEllipsis: 15">
                 </div>
                 <div class="node-version"
                       ng-class="{ 'hidden': DAGPlusPlusCtrl.nodeMenuOpen === node.name}"

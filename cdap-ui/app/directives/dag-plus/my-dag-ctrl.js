@@ -484,8 +484,6 @@ angular.module(PKG.name + '.commons')
     }
 
     function addListenersForEndpoint(endpoint, location, nodeId, labelId) {
-      if (vm.isDisabled) { return; }
-
       let nodeDomElCircle = document.querySelector(`#${nodeId} .endpoint-circle-${location}`);
 
       endpoint.canvas.addEventListener('mouseover', function() {

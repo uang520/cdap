@@ -75,10 +75,6 @@ angular.module(PKG.name + '.commons')
       ]
     }, defaultConnectionStyle);
 
-    // var conditionStageSettings = {
-    //   anchor: [[1, 0.5, 1, 0, 5, 0], [0.5, 1, 0, 1, 0, 5]]
-    // };
-
     function getSettings() {
       var settings = {
         default: defaultSettings,
