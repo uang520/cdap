@@ -16,8 +16,6 @@
 
 package co.cask.cdap.common.lang;
 
-import co.cask.cdap.common.conf.CConfiguration;
-import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.utils.DirUtils;
 import com.google.common.base.Splitter;
 import com.google.common.base.Throwables;
@@ -61,12 +59,8 @@ public class DirectoryClassLoader extends InterceptableClassLoader {
     this(dir, "", parent, ImmutableSet.copyOf(libDirs));
   }
 
-  public DirectoryClassLoader(CConfiguration cConf, File dir, ClassLoader parent, String...libDirs) {
-    this(cConf, dir, parent, Arrays.asList(libDirs));
-  }
-
-  public DirectoryClassLoader(CConfiguration cConf, File dir, ClassLoader parent, Iterable<String> libDirs) {
-    this(dir, cConf.get(Constants.AppFabric.PROGRAM_EXTRA_CLASSPATH), parent, libDirs);
+  public DirectoryClassLoader(File dir, String extraClassPath, ClassLoader parent, String...libDirs) {
+    this(dir, extraClassPath, parent, Arrays.asList(libDirs));
   }
 
   public DirectoryClassLoader(File dir, String extraClassPath, ClassLoader parent, Iterable<String> libDirs) {
