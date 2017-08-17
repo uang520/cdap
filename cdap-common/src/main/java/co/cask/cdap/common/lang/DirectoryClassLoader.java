@@ -59,11 +59,11 @@ public class DirectoryClassLoader extends InterceptableClassLoader {
     this(dir, "", parent, ImmutableSet.copyOf(libDirs));
   }
 
-  public DirectoryClassLoader(File dir, String extraClassPath, ClassLoader parent, String...libDirs) {
+  public DirectoryClassLoader(File dir, @Nullable String extraClassPath, ClassLoader parent, String...libDirs) {
     this(dir, extraClassPath, parent, Arrays.asList(libDirs));
   }
 
-  public DirectoryClassLoader(File dir, String extraClassPath, ClassLoader parent, Iterable<String> libDirs) {
+  public DirectoryClassLoader(File dir, @Nullable String extraClassPath, ClassLoader parent, Iterable<String> libDirs) {
     super(getClassPathURLs(dir, extraClassPath, ImmutableSet.copyOf(libDirs)), parent);
 
     // Try to load the Manifest from the unpacked directory
@@ -104,7 +104,7 @@ public class DirectoryClassLoader extends InterceptableClassLoader {
     throw new UnsupportedOperationException("Class rewriting of class '" + className + "' is not supported");
   }
 
-  private static URL[] getClassPathURLs(File dir, String extraClassPath, Set<String> libDirs) {
+  private static URL[] getClassPathURLs(File dir, @Nullable String extraClassPath, Set<String> libDirs) {
     try {
       List<URL> urls = Lists.newArrayList(dir.toURI().toURL());
       addJarURLs(dir, urls);
