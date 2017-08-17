@@ -42,7 +42,7 @@ angular.module(PKG.name + '.commons')
     var endpointClicked = false;
     var connectionDropped = false;
     var dagMenu;
-    let conditionEndpoints = [];
+    let conditionNodes = [];
 
     vm.scale = 1.0;
 
@@ -280,7 +280,7 @@ angular.module(PKG.name + '.commons')
           vm.instance.makeSource(node.name, sourceObj);
 
         } else {
-          if (conditionEndpoints.indexOf(node.name) !== -1) {
+          if (conditionNodes.indexOf(node.name) !== -1) {
             return;
           }
           let newTrueEndpoint = vm.instance.addEndpoint(node.name, {
@@ -312,7 +312,7 @@ angular.module(PKG.name + '.commons')
           addListenersForEndpoint(newTrueEndpoint, 'right', node.name, 'yesLabel');
           addListenersForEndpoint(newFalseEndpoint, 'bottom', node.name, 'noLabel');
 
-          conditionEndpoints.push(node.name);
+          conditionNodes.push(node.name);
         }
 
         vm.instance.makeTarget(node.name, {
@@ -552,7 +552,7 @@ angular.module(PKG.name + '.commons')
 
       resetTimeout = $timeout(function () {
         vm.instance.reset();
-        conditionEndpoints = [];
+        conditionNodes = [];
 
         $scope.nodes = DAGPlusPlusNodesStore.getNodes();
         $scope.connections = DAGPlusPlusNodesStore.getConnections();
@@ -779,6 +779,33 @@ angular.module(PKG.name + '.commons')
 
     vm.cleanUpGraph = function () {
       if ($scope.nodes.length === 0) { return; }
+
+      // If graph has a condition node, then have to make sure/rearrange connections from that
+      // node so that the 'true' connection always comes before the 'false' one, otherweise
+      // the algorithm will mess up
+      if (conditionNodes.length > 0) {
+        let swappedConnections = false;
+
+        angular.forEach(conditionNodes, (conditionNode) => {
+          let trueConnIndex = _.findIndex($scope.connections, (conn) => {
+            return conn.from === conditionNode && conn.condition === true;
+          });
+          let falseConnIndex = _.findIndex($scope.connections, (conn) => {
+            return conn.from === conditionNode && conn.condition === false;
+          });
+
+          if (trueConnIndex === -1 || falseConnIndex === -1 || trueConnIndex < falseConnIndex) { return; }
+
+          let tempObj = Object.assign({}, $scope.connections[trueConnIndex]);
+          $scope.connections[trueConnIndex] = $scope.connections[falseConnIndex];
+          $scope.connections[falseConnIndex] = tempObj;
+          swappedConnections = true;
+        });
+
+        if (swappedConnections) {
+          DAGPlusPlusNodesActionsFactory.setConnections($scope.connections);
+        }
+      }
 
       var graphNodes = DAGPlusPlusFactory.getGraphLayout($scope.nodes, $scope.connections, separation)._nodes;
       angular.forEach($scope.nodes, function (node) {
