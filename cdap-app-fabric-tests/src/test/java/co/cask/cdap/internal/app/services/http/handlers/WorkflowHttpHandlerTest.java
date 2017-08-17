@@ -887,6 +887,7 @@ public class WorkflowHttpHandlerTest extends AppFabricTestBase {
 
     long current = System.currentTimeMillis();
 
+    // sampleSchedule is initially  suspended, so listing schedules with SCHEDULED status will get 0 schedule
     schedules = getSchedules(TEST_NAMESPACE2, appName, ApplicationId.DEFAULT_VERSION, sampleSchedule,
                              ProgramScheduleStatus.SCHEDULED);
     Assert.assertEquals(0, schedules.size());
@@ -896,9 +897,15 @@ public class WorkflowHttpHandlerTest extends AppFabricTestBase {
     // Check schedule status
     assertSchedule(programId, scheduleName, true, 30, TimeUnit.SECONDS);
 
+    // sampleSchedule is now resumed in SCHEDULED, so listing schedules with SCHEDULED status
+    // should return sampleSchedule
     schedules = getSchedules(TEST_NAMESPACE2, appName, ApplicationId.DEFAULT_VERSION, sampleSchedule,
                              ProgramScheduleStatus.SCHEDULED);
     Assert.assertEquals(1, schedules.size());
+    Assert.assertEquals(TEST_NAMESPACE2, schedules.get(0).getNamespace());
+    Assert.assertEquals(appName, schedules.get(0).getApplication());
+    Assert.assertEquals(ApplicationId.DEFAULT_VERSION, schedules.get(0).getApplicationVersion());
+    Assert.assertEquals(sampleSchedule, schedules.get(0).getName());
 
     List<ScheduledRuntime> runtimes = getScheduledRunTime(programId, true);
     String id = runtimes.get(0).getId();

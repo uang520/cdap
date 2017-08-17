@@ -53,20 +53,13 @@ public class ProgramScheduleRecord {
     ProgramScheduleRecord that = (ProgramScheduleRecord) o;
 
     return Objects.equal(this.schedule, that.schedule) &&
-<<<<<<< HEAD
       Objects.equal(this.meta, that.meta);
-=======
-           Objects.equal(this.meta, that.meta);
->>>>>>> f406ea0... [CDAP-12232] Add composite trigger for scheduling
-
   }
 
   @Override
   public int hashCode() {
     return Objects.hashCode(schedule, meta);
   }
-<<<<<<< HEAD
-=======
 
   @Override
   public String toString() {
@@ -86,5 +79,4 @@ public class ProgramScheduleRecord {
                               schedule.getProperties(), schedule.getTrigger(), schedule.getConstraints(),
                               schedule.getTimeoutMillis(), meta.getStatus().name());
   }
->>>>>>> f406ea0... [CDAP-12232] Add composite trigger for scheduling
 }

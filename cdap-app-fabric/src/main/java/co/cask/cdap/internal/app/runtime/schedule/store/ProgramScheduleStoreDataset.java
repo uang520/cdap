@@ -442,20 +442,20 @@ public class ProgramScheduleStoreDataset extends AbstractDataset {
   }
 
   /**
-   * Retrieve all schedules for a given application.
+   * Retrieve all schedule records for a given application.
    *
-   * @param appId the application for which to list the schedules.
-   * @return a list of schedules for the application; never null
+   * @param appId the application for which to list the schedule records.
+   * @return a list of schedule records for the application; never null
    */
   public List<ProgramScheduleRecord> listScheduleRecords(ApplicationId appId) {
     return listScheduleRecords(appId, null);
   }
 
   /**
-   * Retrieve all schedules for a given program.
+   * Retrieve all schedule records for a given program.
    *
-   * @param programId the program for which to list the schedules.
-   * @return a list of schedules for the program; never null
+   * @param programId the program for which to list the schedule records.
+   * @return a list of schedule records for the program; never null
    */
   public List<ProgramScheduleRecord> listScheduleRecords(ProgramId programId) {
     return listScheduleRecords(programId.getParent(), programId);

@@ -333,19 +333,13 @@ public abstract class ProtoTrigger implements Trigger {
   public static class ProgramStatusTrigger extends ProtoTrigger {
     protected final ProgramId programId;
     protected final Set<ProgramStatus> programStatuses;
-    protected final Map<String, String> runtimeArgsMap;
+
 
     public ProgramStatusTrigger(ProgramId programId, Set<ProgramStatus> programStatuses) {
-      this(programId, programStatuses, new HashMap<String, String>());
-    }
-
-    public ProgramStatusTrigger(ProgramId programId, Set<ProgramStatus> programStatuses,
-                                Map<String, String> runtimeArgsMap) {
       super(Type.PROGRAM_STATUS);
 
       this.programId = programId;
       this.programStatuses = programStatuses;
-      this.runtimeArgsMap = runtimeArgsMap;
       validate();
     }
 
@@ -355,10 +349,6 @@ public abstract class ProtoTrigger implements Trigger {
 
     public Set<ProgramStatus> getProgramStatuses() {
       return programStatuses;
-    }
-
-    public Map<String, String> getRuntimeArgsMap() {
-      return runtimeArgsMap;
     }
 
     @Override
@@ -376,7 +366,7 @@ public abstract class ProtoTrigger implements Trigger {
 
     @Override
     public int hashCode() {
-      return Objects.hash(getProgramId(), getProgramStatuses(), getRuntimeArgsMap());
+      return Objects.hash(getProgramId(), getProgramStatuses());
     }
 
     @Override
@@ -385,8 +375,7 @@ public abstract class ProtoTrigger implements Trigger {
         o != null &&
           getClass().equals(o.getClass()) &&
           Objects.equals(getProgramStatuses(), ((ProgramStatusTrigger) o).getProgramStatuses()) &&
-          Objects.equals(getProgramId(), ((ProgramStatusTrigger) o).getProgramId()) &&
-          Objects.equals(getRuntimeArgsMap(), ((ProgramStatusTrigger) o).getRuntimeArgsMap());
+          Objects.equals(getProgramId(), ((ProgramStatusTrigger) o).getProgramId());
     }
 
     @Override

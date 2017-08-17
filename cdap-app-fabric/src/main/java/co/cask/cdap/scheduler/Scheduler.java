@@ -143,17 +143,17 @@ public interface Scheduler {
   List<ProgramSchedule> listSchedules(ProgramId programId) throws NotFoundException;
 
   /**
-   * Retrieve all schedules for a given application.
+   * Retrieve all schedule records for a given application.
    *
-   * @param appId the application for which to list the schedules.
+   * @param appId the application for which to list the schedule records.
    * @return a list of schedule records for the application; never null
    */
   List<ProgramScheduleRecord> listScheduleRecords(ApplicationId appId) throws NotFoundException;
 
   /**
-   * Retrieve all schedules for a given program.
+   * Retrieve all schedule records for a given program.
    *
-   * @param programId the program for which to list the schedules.
+   * @param programId the program for which to list the schedule records.
    * @return a list of schedule records for the program; never null
    */
   List<ProgramScheduleRecord> listScheduleRecords(ProgramId programId) throws NotFoundException;

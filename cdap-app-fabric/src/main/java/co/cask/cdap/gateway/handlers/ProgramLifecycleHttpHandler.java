@@ -741,8 +741,7 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
    *               or "spec" to return {@link ScheduleSpecification}
    * @param triggerType trigger type of returned schedules. If not specified, all schedules
    *                    are returned regardless of trigger type
-   * @param scheduleStatus the status of the schedule, must be values in
-   * {@link co.cask.cdap.internal.app.runtime.schedule.ProgramScheduleStatus}
+   * @param scheduleStatus the status of the schedule, must be values in {@link ProgramScheduleStatus}.
    *                       If not specified, all schedules are returned regardless of status
    */
   @GET
@@ -802,6 +801,7 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
 
   private Collection<ProgramScheduleRecord> filterSchedulesByStatus(Collection<ProgramScheduleRecord> scheduleRecords,
                                                                     String scheduleStatus) {
+    // No need to filter by status if scheduleStatus is null, directly return the original records
     if (scheduleStatus == null) {
       return scheduleRecords;
     }
@@ -991,9 +991,10 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
 
   private ScheduleDetail toScheduleDetail(ScheduleUpdateDetail updateDetail, ProgramSchedule existing) {
     ScheduleUpdateDetail.Schedule scheduleUpdate = updateDetail.getSchedule();
+    ProgramId programId = existing.getProgramId();
+    NamespaceId namespaceId = programId.getNamespaceId();
     if (scheduleUpdate == null) {
-      ScheduleId scheduleId = existing.getScheduleId();
-      return new ScheduleDetail(scheduleId.getNamespace(), scheduleId.getApplication(), scheduleId.getVersion(),
+      return new ScheduleDetail(programId.getNamespace(), programId.getApplication(), programId.getVersion(),
                                 null, null, null, updateDetail.getProperties(), null, null, null, null);
     }
     Trigger trigger = null;
@@ -1004,8 +1005,6 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
                         " stream name and data trigger configuration in the same schedule update details %s. " +
                         "Schedule update detail must contain only one trigger.", updateDetail));
     }
-    ProgramId programId = existing.getProgramId();
-    NamespaceId namespaceId = programId.getNamespaceId();
     if (scheduleUpdate.getCronExpression() != null) {
       trigger = new TimeTrigger(updateDetail.getSchedule().getCronExpression());
     } else if (existing.getTrigger() instanceof StreamSizeTrigger) {
@@ -1027,7 +1026,7 @@ public class ProgramLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
                       updateDetail, existing.getTrigger().getClass()));
     }
     List<Constraint> constraints = toConstraints(scheduleUpdate.getRunConstraints());
-    return new ScheduleDetail(namespaceId.getNamespace(), programId.getApplication(), programId.getVersion(),
+    return new ScheduleDetail(programId.getNamespace(), programId.getApplication(), programId.getVersion(),
                               null, scheduleUpdate.getDescription(), null,
                               updateDetail.getProperties(), trigger, constraints, null, null);
   }
