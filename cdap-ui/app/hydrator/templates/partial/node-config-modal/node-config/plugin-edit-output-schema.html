@@ -21,9 +21,10 @@
       <li class="text-danger" ng-repeat="error in HydratorPlusPlusNodeConfigCtrl.state.errors">{{ error }}</li>
     </ul>
   </div>
-  <h4>
-    <span ng-if="!HydratorPlusPlusNodeConfigCtrl.state.isSink">Output Schema</span>
+  <h4 class="output-schema-label">
     <span ng-if="HydratorPlusPlusNodeConfigCtrl.state.isSink">Schema</span>
+    <span ng-if="!HydratorPlusPlusNodeConfigCtrl.state.isSink && HydratorPlusPlusNodeConfigCtrl.state.node.type !== 'condition' && HydratorPlusPlusNodeConfigCtrl.state.node.plugin.type !== 'condition'">Output Schema</span>
+    <span ng-if="HydratorPlusPlusNodeConfigCtrl.state.node.type === 'condition' || HydratorPlusPlusNodeConfigCtrl.state.node.plugin.type === 'condition'">Output Schema for both "Yes" and "No"</span>
 
     <span class="fa fa-asterisk ng-scope" ng-if="HydratorPlusPlusNodeConfigCtrl.state.groupsConfig.outputSchema.isOutputSchemaRequired"></span>
 
