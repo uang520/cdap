@@ -29,6 +29,7 @@ import co.cask.cdap.etl.common.BasicArguments;
 import co.cask.cdap.etl.common.DefaultMacroEvaluator;
 import co.cask.cdap.etl.common.DefaultStageMetrics;
 import co.cask.cdap.etl.common.PipelineRuntime;
+import co.cask.cdap.etl.common.StageStatisticsCollector;
 import co.cask.cdap.etl.common.plugin.PipelinePluginContext;
 import co.cask.cdap.etl.spark.batch.SparkBatchRuntimeContext;
 import co.cask.cdap.etl.spark.plugin.SparkPipelinePluginContext;
@@ -54,15 +55,16 @@ public class PluginFunctionContext implements Serializable {
   private final SecureStore secureStore;
   private final DataTracer dataTracer;
   private final StageSpec stageSpec;
+  private final StageStatisticsCollector collector;
   private transient PipelinePluginContext pipelinePluginContext;
 
-  public PluginFunctionContext(StageSpec stageSpec, JavaSparkExecutionContext sec) {
-    this(stageSpec, sec, new BasicArguments(sec).asMap(), sec.getLogicalStartTime());
+  public PluginFunctionContext(StageSpec stageSpec, JavaSparkExecutionContext sec, StageStatisticsCollector collector) {
+    this(stageSpec, sec, new BasicArguments(sec).asMap(), sec.getLogicalStartTime(), collector);
   }
 
   // used in spark streaming, where each batch has a different batch time, and prepareRun is run per batch
-  public PluginFunctionContext(StageSpec stageSpec, JavaSparkExecutionContext sec,
-                               Map<String, String> arguments, long logicalStartTime) {
+  public PluginFunctionContext(StageSpec stageSpec, JavaSparkExecutionContext sec, Map<String, String> arguments,
+                               long logicalStartTime, StageStatisticsCollector collector) {
     this.namespace = sec.getNamespace();
     this.pipelineName = sec.getApplicationSpecification().getName();
     this.stageSpec = stageSpec;
@@ -74,6 +76,7 @@ public class PluginFunctionContext implements Serializable {
     this.secureStore = sec.getSecureStore();
     this.dataTracer = sec.getDataTracer(stageSpec.getName());
     this.pipelinePluginContext = getPluginContext();
+    this.collector = collector;
   }
 
   public <T> T createPlugin() throws Exception {
@@ -91,6 +94,10 @@ public class PluginFunctionContext implements Serializable {
 
   public StageMetrics createStageMetrics() {
     return new DefaultStageMetrics(metrics, stageSpec.getName());
+  }
+
+  public StageStatisticsCollector getStageStatisticsCollector() {
+    return collector;
   }
 
   public SparkBatchRuntimeContext createBatchRuntimeContext() {
