@@ -17,6 +17,7 @@
 package co.cask.cdap.internal.app.runtime.schedule.trigger;
 
 import co.cask.cdap.api.schedule.Trigger;
+import co.cask.cdap.api.schedule.TriggerInfo;
 import co.cask.cdap.proto.Notification;
 
 import java.util.List;
@@ -43,4 +44,12 @@ public interface SatisfiableTrigger extends Trigger {
    * @return a set of trigger keys as {@link String}. The set will be never be null.
    */
   Set<String> getTriggerKeys();
+
+  /**
+   * Get the {@link TriggerInfo} constructed from this trigger with the given context
+   *
+   * @param context the {@link TriggerInfoContext} that provides necessary information to build the {@link TriggerInfo}
+   * @return {@link TriggerInfo} of this trigger
+   */
+  TriggerInfo getTriggerInfo(TriggerInfoContext context);
 }

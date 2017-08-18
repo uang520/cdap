@@ -17,6 +17,8 @@
 package co.cask.cdap.internal.app.runtime.schedule.trigger;
 
 
+import co.cask.cdap.api.schedule.PartitionTriggerInfo;
+import co.cask.cdap.api.schedule.TriggerInfo;
 import co.cask.cdap.internal.app.runtime.schedule.store.Schedulers;
 import co.cask.cdap.proto.Notification;
 import co.cask.cdap.proto.ProtoTrigger;
@@ -37,6 +39,10 @@ public class PartitionTrigger extends ProtoTrigger.PartitionTrigger implements S
 
   @Override
   public boolean isSatisfied(List<Notification> notifications) {
+    return getPartitionsCount(notifications) >= numPartitions;
+  }
+
+  private int getPartitionsCount(List<Notification> notifications) {
     int partitionsCount = 0;
     for (Notification notification : notifications) {
       if (!notification.getNotificationType().equals(Notification.Type.PARTITION)) {
@@ -51,11 +57,17 @@ public class PartitionTrigger extends ProtoTrigger.PartitionTrigger implements S
         partitionsCount += Integer.parseInt(numPartitionsString);
       }
     }
-    return partitionsCount >= numPartitions;
+    return partitionsCount;
   }
 
   @Override
   public Set<String> getTriggerKeys() {
     return ImmutableSet.of(Schedulers.triggerKeyForPartition(dataset));
+  }
+
+  @Override
+  public TriggerInfo getTriggerInfo(TriggerInfoContext context) {
+    return new PartitionTriggerInfo(dataset.getNamespace(), dataset.getDataset(), numPartitions,
+                                    getPartitionsCount(context.getNotifications()));
   }
 }

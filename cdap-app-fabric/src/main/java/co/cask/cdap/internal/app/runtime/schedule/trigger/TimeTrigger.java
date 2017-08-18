@@ -16,13 +16,18 @@
 
 package co.cask.cdap.internal.app.runtime.schedule.trigger;
 
+import co.cask.cdap.api.schedule.TimeTriggerInfo;
+import co.cask.cdap.api.schedule.TriggerInfo;
 import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
 import co.cask.cdap.internal.app.runtime.schedule.store.Schedulers;
 import co.cask.cdap.proto.Notification;
 import co.cask.cdap.proto.ProtoTrigger;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -32,6 +37,7 @@ import java.util.Set;
  * A Trigger that schedules a ProgramSchedule, based upon a particular cron expression.
  */
 public class TimeTrigger extends ProtoTrigger.TimeTrigger implements SatisfiableTrigger {
+  private static final Logger LOG = LoggerFactory.getLogger(TimeTrigger.class);
   private static final Gson GSON = new Gson();
   private static final java.lang.reflect.Type STRING_STRING_MAP = new TypeToken<Map<String, String>>() { }.getType();
 
@@ -63,5 +69,30 @@ public class TimeTrigger extends ProtoTrigger.TimeTrigger implements Satisfiable
   @Override
   public Set<String> getTriggerKeys() {
     return ImmutableSet.of();
+  }
+
+  @Override
+  public TimeTriggerInfo getTriggerInfo(TriggerInfoContext context) {
+    for (Notification notification : context.getNotifications()) {
+      if (!notification.getNotificationType().equals(Notification.Type.TIME)) {
+        continue;
+      }
+      String systemOverridesString = notification.getProperties().get(ProgramOptionConstants.SYSTEM_OVERRIDES);
+      String userOverridesString = notification.getProperties().get(ProgramOptionConstants.USER_OVERRIDES);
+      if (systemOverridesString == null || userOverridesString == null) {
+        continue;
+      }
+      Map<String, String> systemOverrides = GSON.fromJson(systemOverridesString, STRING_STRING_MAP);
+      Map<String, String> userOverrides = GSON.fromJson(userOverridesString, STRING_STRING_MAP);
+
+      if (cronExpression.equals(systemOverrides.get(ProgramOptionConstants.CRON_EXPRESSION))) {
+
+        String logicalStartTime = userOverrides.get(ProgramOptionConstants.LOGICAL_START_TIME);
+        return new TimeTriggerInfo(cronExpression, logicalStartTime);
+      }
+    }
+    LOG.debug("No logical start time found from notifications {} for TimeTrigger with cron expression '{}' " +
+                "in schedule '{}'", context.getNotifications(), cronExpression, context.getSchedule());
+    return new TimeTriggerInfo(cronExpression, null);
   }
 }

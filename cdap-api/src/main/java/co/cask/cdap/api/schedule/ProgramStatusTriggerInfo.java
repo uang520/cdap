@@ -18,6 +18,7 @@ package co.cask.cdap.api.schedule;
 
 import co.cask.cdap.api.ProgramStatus;
 import co.cask.cdap.api.app.ApplicationSpecification;
+import co.cask.cdap.api.app.ProgramType;
 import co.cask.cdap.api.workflow.WorkflowToken;
 
 import java.util.Map;
@@ -31,25 +32,32 @@ public class ProgramStatusTriggerInfo extends TriggerInfo {
 
   private final String namespace;
   private final ApplicationSpecification applicationSpecification;
+  private final ProgramType programType;
   private final String program;
-  private final String programRunId;
-  private final ProgramStatus programStatus;
   private final Set<ProgramStatus> triggerStatues;
-  private final WorkflowToken userWorkflowToken;
+  @Nullable
+  private final String runId;
+  @Nullable
+  private final ProgramStatus programStatus;
+  @Nullable
+  private final WorkflowToken workflowToken;
+  @Nullable
   private final Map<String, String> runtimeArguments;
 
   public ProgramStatusTriggerInfo(String namespace, ApplicationSpecification applicationSpecification,
-                                  String program, String programRunId, ProgramStatus programStatus,
-                                  Set<ProgramStatus> triggerStatues,
-                                  WorkflowToken userWorkflowToken, Map<String, String> runtimeArguments) {
+                                  ProgramType programType, String program, Set<ProgramStatus> triggerStatues,
+                                  @Nullable String runId, @Nullable ProgramStatus programStatus,
+                                  @Nullable WorkflowToken workflowToken,
+                                  @Nullable Map<String, String> runtimeArguments) {
     super(Trigger.Type.PROGRAM_STATUS);
     this.namespace = namespace;
     this.applicationSpecification = applicationSpecification;
+    this.programType = programType;
     this.program = program;
-    this.programRunId = programRunId;
-    this.programStatus = programStatus;
     this.triggerStatues = triggerStatues;
-    this.userWorkflowToken = userWorkflowToken;
+    this.runId = runId;
+    this.programStatus = programStatus;
+    this.workflowToken = workflowToken;
     this.runtimeArguments = runtimeArguments;
   }
 
@@ -63,8 +71,15 @@ public class ProgramStatusTriggerInfo extends TriggerInfo {
   /**
    * @return The application specification of the application that contains the triggering program.
    */
-  ApplicationSpecification getApplicationSpecifications() {
+  public ApplicationSpecification getApplicationSpecification() {
     return applicationSpecification;
+  }
+
+  /**
+   * @return The program type of the triggering program.
+   */
+  public ProgramType getProgramType() {
+    return programType;
   }
 
   /**
@@ -75,20 +90,6 @@ public class ProgramStatusTriggerInfo extends TriggerInfo {
   }
 
   /**
-   * @return The program run Id of the triggering program run.
-   */
-  public String getProgramRunId() {
-    return programRunId;
-  }
-
-  /**
-   * @return The program status of the triggering program.
-   */
-  public ProgramStatus getProgramStatus() {
-    return programStatus;
-  }
-
-  /**
    * @return All the program statuses that can satisfy the program status trigger.
    */
   public Set<ProgramStatus> getTriggerStatues() {
@@ -96,24 +97,38 @@ public class ProgramStatusTriggerInfo extends TriggerInfo {
   }
 
   /**
-   * @return The application specification of the parent application which contains
-   *         the program that triggers the schedule.
-   */
-  public ApplicationSpecification getApplicationSpecification() {
-    return applicationSpecification;
-  }
-
-  /**
-   * @return The user-scope workflow token if the program is a workflow, or {@code null} otherwise.
+   * @return The program run Id of the triggering program run that can satisfy the program status trigger,
+   *         or {@code null} if there is no such run.
    */
   @Nullable
-  public WorkflowToken getUserWorkflowToken() {
-    return userWorkflowToken;
+  public String getRunId() {
+    return runId;
   }
 
   /**
-   * @return The runtime arguments key-value pairs as values.
+   * @return The program status of the triggering program run that can satisfy the program status trigger,
+   *         or {@code null} if there is no such run.
    */
+  @Nullable
+  public ProgramStatus getProgramStatus() {
+    return programStatus;
+  }
+
+  /**
+   * @return The workflow token if the program is a workflow with a run that can
+   *         satisfy the program status trigger, or an empty workflow token if there's no such run.
+   *         Return {@code null} if the program is not a workflow.
+   */
+  @Nullable
+  public WorkflowToken getWorkflowToken() {
+    return workflowToken;
+  }
+
+  /**
+   * @return The runtime arguments of the triggering program run that can satisfy the program status trigger,
+   *         or {@code null} if there is no such run.
+   */
+  @Nullable
   public Map<String, String> getRuntimeArguments() {
     return runtimeArguments;
   }

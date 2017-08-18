@@ -16,6 +16,8 @@
 
 package co.cask.cdap.internal.app.runtime.schedule.trigger;
 
+import co.cask.cdap.api.schedule.StreamSizeTriggerInfo;
+import co.cask.cdap.api.schedule.TriggerInfo;
 import co.cask.cdap.proto.Notification;
 import co.cask.cdap.proto.ProtoTrigger;
 import co.cask.cdap.proto.id.StreamId;
@@ -41,5 +43,10 @@ public class StreamSizeTrigger extends ProtoTrigger.StreamSizeTrigger implements
   @Override
   public Set<String> getTriggerKeys() {
     return ImmutableSet.of();
+  }
+
+  @Override
+  public TriggerInfo getTriggerInfo(TriggerInfoContext context) {
+    return new StreamSizeTriggerInfo(streamId.getNamespace(), streamId.getStream(), triggerMB);
   }
 }

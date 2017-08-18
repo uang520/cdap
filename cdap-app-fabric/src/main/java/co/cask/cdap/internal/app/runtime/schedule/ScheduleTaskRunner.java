@@ -16,8 +16,11 @@
 
 package co.cask.cdap.internal.app.runtime.schedule;
 
+import co.cask.cdap.api.schedule.TriggerInfo;
+import co.cask.cdap.api.schedule.TriggeringScheduleInfo;
 import co.cask.cdap.app.runtime.ProgramController;
 import co.cask.cdap.app.runtime.ProgramRuntimeService;
+import co.cask.cdap.app.store.Store;
 import co.cask.cdap.common.ApplicationNotFoundException;
 import co.cask.cdap.common.ProgramNotFoundException;
 import co.cask.cdap.common.conf.CConfiguration;
@@ -27,6 +30,8 @@ import co.cask.cdap.internal.UserMessages;
 import co.cask.cdap.internal.app.runtime.AbstractListener;
 import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
 import co.cask.cdap.internal.app.runtime.schedule.queue.Job;
+import co.cask.cdap.internal.app.runtime.schedule.trigger.SatisfiableTrigger;
+import co.cask.cdap.internal.app.runtime.schedule.trigger.TriggerInfoContext;
 import co.cask.cdap.internal.app.services.ProgramLifecycleService;
 import co.cask.cdap.internal.app.services.PropertiesResolver;
 import co.cask.cdap.proto.id.ProgramId;
@@ -57,15 +62,17 @@ public final class ScheduleTaskRunner {
   private static final Gson GSON = new Gson();
   private static final Type STRING_STRING_MAP = new TypeToken<Map<String, String>>() { }.getType();
 
+  private final Store store;
   private final ProgramLifecycleService lifecycleService;
   private final PropertiesResolver propertiesResolver;
   private final ListeningExecutorService executorService;
   private final NamespaceQueryAdmin namespaceQueryAdmin;
   private final CConfiguration cConf;
 
-  public ScheduleTaskRunner(ProgramLifecycleService lifecycleService, PropertiesResolver propertiesResolver,
-                            ListeningExecutorService taskExecutor,
+  public ScheduleTaskRunner(Store store, ProgramLifecycleService lifecycleService,
+                            PropertiesResolver propertiesResolver, ListeningExecutorService taskExecutor,
                             NamespaceQueryAdmin namespaceQueryAdmin, CConfiguration cConf) {
+    this.store = store;
     this.lifecycleService = lifecycleService;
     this.propertiesResolver = propertiesResolver;
     this.executorService = taskExecutor;
@@ -97,6 +104,11 @@ public final class ScheduleTaskRunner {
     }
     systemArgs.put(ProgramOptionConstants.SCHEDULE_NAME, schedule.getName());
     systemArgs.put(ProgramOptionConstants.EVENT_NOTIFICATIONS, GSON.toJson(job.getNotifications()));
+    TriggerInfo triggerInfo =
+      ((SatisfiableTrigger) job.getSchedule().getTrigger()).getTriggerInfo(new TriggerInfoContext(job, store));
+    systemArgs.put(ProgramOptionConstants.TRIGGERING_SCHEDULE_INFO,
+                   GSON.toJson(new TriggeringScheduleInfo(schedule.getName(), schedule.getDescription(),
+                                                          triggerInfo, schedule.getProperties())));
 
     execute(programId, systemArgs, userArgs);
     LOG.info("Successfully started program {} in schedule {}.", schedule.getProgramId(), schedule.getName());

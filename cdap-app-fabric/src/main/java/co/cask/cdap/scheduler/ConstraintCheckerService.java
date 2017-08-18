@@ -22,7 +22,6 @@ import co.cask.cdap.api.dataset.lib.CloseableIterator;
 import co.cask.cdap.app.store.Store;
 import co.cask.cdap.common.ApplicationNotFoundException;
 import co.cask.cdap.common.NamespaceNotFoundException;
-import co.cask.cdap.common.NotFoundException;
 import co.cask.cdap.common.ProgramNotFoundException;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.namespace.NamespaceQueryAdmin;
@@ -35,8 +34,8 @@ import co.cask.cdap.data2.transaction.TxCallable;
 import co.cask.cdap.internal.app.runtime.schedule.ScheduleTaskRunner;
 import co.cask.cdap.internal.app.runtime.schedule.TaskExecutionException;
 import co.cask.cdap.internal.app.runtime.schedule.constraint.CheckableConstraint;
-import co.cask.cdap.internal.app.runtime.schedule.constraint.ConstraintContext;
 import co.cask.cdap.internal.app.runtime.schedule.constraint.ConstraintResult;
+import co.cask.cdap.internal.app.runtime.schedule.constraint.ConstraintContext;
 import co.cask.cdap.internal.app.runtime.schedule.queue.Job;
 import co.cask.cdap.internal.app.runtime.schedule.queue.JobQueueDataset;
 import co.cask.cdap.internal.app.runtime.schedule.store.Schedulers;
@@ -108,7 +107,7 @@ class ConstraintCheckerService extends AbstractIdleService {
     LOG.info("Starting ConstraintCheckerService.");
     taskExecutorService = MoreExecutors.listeningDecorator(
       Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("constraint-checker-task").build()));
-    taskRunner = new ScheduleTaskRunner(lifecycleService, propertiesResolver,
+    taskRunner = new ScheduleTaskRunner(store, lifecycleService, propertiesResolver,
                                         taskExecutorService, namespaceQueryAdmin, cConf);
 
     int numPartitions = Schedulers.getJobQueue(multiThreadDatasetCache, datasetFramework).getNumPartitions();
