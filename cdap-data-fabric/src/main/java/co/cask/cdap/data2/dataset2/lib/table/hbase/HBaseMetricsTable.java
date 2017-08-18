@@ -106,7 +106,7 @@ public class HBaseMetricsTable implements MetricsTable {
         spec.getIntProperty(Constants.Metrics.METRICS_HBASE_TABLE_SPLITS, 16)) {
         LOG.warn("Ignoring {} value of property {} from cdap-site.xml because splits value can not be changed for " +
                    "system table {}", cConf.getInt(Constants.Metrics.METRICS_HBASE_TABLE_SPLITS),
-                 Constants.Metrics.METRICS_HBASE_TABLE_SPLITS, spec.getName().contains("v3"));
+                 Constants.Metrics.METRICS_HBASE_TABLE_SPLITS, spec.getName());
       }
 
       RejectedExecutionHandler callerRunsPolicy = new RejectedExecutionHandler() {
@@ -124,7 +124,7 @@ public class HBaseMetricsTable implements MetricsTable {
         }
       };
 
-      int maxScanThread = cConf.getInt(Constants.Metrics.METRICS_HBASE_MAX_SCAN_THREADS, 96);
+      int maxScanThread = cConf.getInt(Constants.Metrics.METRICS_HBASE_MAX_SCAN_THREADS);
       // Creates a executor that will shrink to 0 threads if left idle
       // Uses daemon thread, hence no need to worry about shutdown
       // When all threads are busy, use the caller thread to execute

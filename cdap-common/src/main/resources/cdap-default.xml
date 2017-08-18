@@ -2097,11 +2097,11 @@
   </property>
 
   <property>
-    <name>metrics.v3.table.splits</name>
+    <name>metrics.table.splits</name>
     <value>16</value>
     <description>
-      Number of splits for all v3 metrics tables. This property can only be changed when v3 tables are created for the
-      first time. Once v3 metrics tables are created, this property will not take any effect.
+      Number of splits for all metrics tables. This property can only be changed before CDAP starts up for the first
+      time and creates the metrics tables. Once all metrics tables are created, this property will not take any effect.
     </description>
   </property>
 
