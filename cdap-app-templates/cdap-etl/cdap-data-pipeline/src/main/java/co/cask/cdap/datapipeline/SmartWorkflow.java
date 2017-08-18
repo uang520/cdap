@@ -56,6 +56,7 @@ import co.cask.cdap.etl.batch.connector.AlertReader;
 import co.cask.cdap.etl.batch.connector.ConnectorSource;
 import co.cask.cdap.etl.batch.customaction.PipelineAction;
 import co.cask.cdap.etl.batch.mapreduce.ETLMapReduce;
+import co.cask.cdap.etl.common.BasicArguments;
 import co.cask.cdap.etl.common.Constants;
 import co.cask.cdap.etl.common.DefaultAlertPublisherContext;
 import co.cask.cdap.etl.common.DefaultMacroEvaluator;
@@ -262,8 +263,7 @@ public class SmartWorkflow extends AbstractWorkflow {
   }
 
   private Map<String, String> getNewRuntimeArgsFromScheduleInfo(TriggeringScheduleInfo scheduleInfo,
-                                                                Map<String, String> propertiesMap,
-                                                                Map<String, String> runtimeArgs) {
+                                                                Map<String, String> propertiesMap) {
     TriggerInfo triggerInfo = scheduleInfo.getTriggerInfo();
     List<TriggerInfo> triggerInfoList = triggerInfo instanceof AbstractCompositeTriggerInfo ?
       ((AbstractCompositeTriggerInfo) triggerInfo).getUnitTriggerInfos() : ImmutableList.of(triggerInfo);
@@ -273,9 +273,10 @@ public class SmartWorkflow extends AbstractWorkflow {
         programStatusTriggerInfos.add((ProgramStatusTriggerInfo) info);
       }
     }
+    Map<String, String> newRuntimeArgs = new HashMap<>();
     // If no ProgramStatusTriggerInfo, no need of override the existing runtimeArgs
     if (programStatusTriggerInfos.size() == 0) {
-      return runtimeArgs;
+      return newRuntimeArgs;
     }
     // The syntax for runtime args from the triggering pipeline is:
     //   runtime-arg:<namespace>:<pipeline-name>#<runtime-arg-key>
@@ -283,7 +284,6 @@ public class SmartWorkflow extends AbstractWorkflow {
     //   pipeline-config:<namespace>:<pipeline-name>#<pipeline-stage>:<stage-config-key>
     // User tokens from the triggering pipeline:
     //   token:<namespace>:<pipeline-name>#<node-name>:<user-token-key>
-    Map<String, String> newRuntimeArgs = new HashMap<>(runtimeArgs);
     for (Map.Entry<String, String> entry : propertiesMap.entrySet()) {
       String triggeringPropertyName = entry.getKey();
       String[] propertyParts = triggeringPropertyName.split("#");
@@ -303,16 +303,16 @@ public class SmartWorkflow extends AbstractWorkflow {
       String pipelineName = categoryNamespacePipelineParts[2];
       switch (categoryName) {
         case TRIGGERING_RUNTIME_ARG:
-          overrideWithTriggeringRuntimeArg(programStatusTriggerInfos, runtimeArgs, namepace,
-                                           pipelineName, propertyParts[1], entry.getValue());
+          addTriggeringRuntimeArg(programStatusTriggerInfos, newRuntimeArgs, namepace,
+                                  pipelineName, propertyParts[1], entry.getValue());
           break;
         case TRIGGERING_TOKEN:
-          overrideWithTriggeringToken(programStatusTriggerInfos, runtimeArgs, namepace,
-                                      pipelineName, propertyParts[1], entry.getValue());
+          addTriggeringToken(programStatusTriggerInfos, newRuntimeArgs, namepace,
+                             pipelineName, propertyParts[1], entry.getValue());
           break;
         case TRIGGERING_PIPELINE_CONFIG:
-          overrideWithPipelineConfig(programStatusTriggerInfos, runtimeArgs, namepace,
-                                     pipelineName, propertyParts[1], entry.getValue());
+          addPipelineConfig(programStatusTriggerInfos, newRuntimeArgs, namepace,
+                            pipelineName, propertyParts[1], entry.getValue());
           break;
         default:
           LOG.debug("Cannot find matching category for the category name '{}' in '{}'. Skip this entry.",
@@ -323,9 +323,9 @@ public class SmartWorkflow extends AbstractWorkflow {
     return newRuntimeArgs;
   }
 
-  private void overrideWithTriggeringRuntimeArg(List<ProgramStatusTriggerInfo> programStatusTriggerInfos,
-                                                Map<String, String> runtimeArgs, String namespace, String pipelineName,
-                                                String triggeringKey, String overrideKey) {
+  private void addTriggeringRuntimeArg(List<ProgramStatusTriggerInfo> programStatusTriggerInfos,
+                                       Map<String, String> runtimeArgs, String namespace, String pipelineName,
+                                       String triggeringKey, String overrideKey) {
     for (ProgramStatusTriggerInfo triggerInfo : programStatusTriggerInfos) {
       if (namespace.equals(triggerInfo.getNamespace()) &&
         pipelineName.equals(triggerInfo.getApplicationSpecification().getName())) {
@@ -342,9 +342,9 @@ public class SmartWorkflow extends AbstractWorkflow {
     }
   }
 
-  private void overrideWithTriggeringToken(List<ProgramStatusTriggerInfo> programStatusTriggerInfos,
-                                           Map<String, String> runtimeArgs, String namespace, String pipelineName,
-                                           String triggeringKeyNodePair, String overrideKey) {
+  private void addTriggeringToken(List<ProgramStatusTriggerInfo> programStatusTriggerInfos,
+                                  Map<String, String> runtimeArgs, String namespace, String pipelineName,
+                                  String triggeringKeyNodePair, String overrideKey) {
     for (ProgramStatusTriggerInfo triggerInfo : programStatusTriggerInfos) {
       if (namespace.equals(triggerInfo.getNamespace()) &&
         pipelineName.equals(triggerInfo.getApplicationSpecification().getName())) {
@@ -368,9 +368,9 @@ public class SmartWorkflow extends AbstractWorkflow {
     }
   }
 
-  private void overrideWithPipelineConfig(List<ProgramStatusTriggerInfo> programStatusTriggerInfos,
-                                           Map<String, String> runtimeArgs, String namespace, String pipelineName,
-                                           String triggeringStageKeyPair, String overrideKey) {
+  private void addPipelineConfig(List<ProgramStatusTriggerInfo> programStatusTriggerInfos,
+                                 Map<String, String> runtimeArgs, String namespace, String pipelineName,
+                                 String triggeringStageKeyPair, String overrideKey) {
     for (ProgramStatusTriggerInfo triggerInfo : programStatusTriggerInfos) {
       if (namespace.equals(triggerInfo.getNamespace()) &&
         pipelineName.equals(triggerInfo.getApplicationSpecification().getName())) {
@@ -393,19 +393,25 @@ public class SmartWorkflow extends AbstractWorkflow {
 
   @Override
   public void initialize(WorkflowContext context) throws Exception {
-    Map<String, String> newRuntimeArgs = context.getRuntimeArguments();
+    super.initialize(context);
+    PipelineRuntime pipelineRuntime = new PipelineRuntime(context, workflowMetrics);
+    BasicArguments pipelineArgs = pipelineRuntime.getArguments();
+    Map<String, String> combinedRuntimeArgs = new HashMap<>(context.getRuntimeArguments());
     TriggeringScheduleInfo scheduleInfo = context.getTriggeringScheduleInfo();
     if (scheduleInfo != null) {
       String propertiesMappingString = scheduleInfo.getProperties().get(TRIGGERING_PROPERTIES_MAPPING);
       if (propertiesMappingString != null) {
         Map<String, String> propertiesMap = GSON.fromJson(propertiesMappingString, STRING_STRING_MAP);
-        newRuntimeArgs =
-          getNewRuntimeArgsFromScheduleInfo(scheduleInfo, propertiesMap, context.getRuntimeArguments());
+        Map<String, String> newRuntimeArgs =
+          getNewRuntimeArgsFromScheduleInfo(scheduleInfo, propertiesMap);
+        for (Map.Entry<String, String> entry : newRuntimeArgs.entrySet()) {
+          combinedRuntimeArgs.put(entry.getKey(), entry.getValue());
+          pipelineArgs.set(entry.getKey(), entry.getValue());
+        }
       }
     }
-    super.initialize(context);
 
-    String arguments = Joiner.on(", ").withKeyValueSeparator("=").join(newRuntimeArgs);
+    String arguments = Joiner.on(", ").withKeyValueSeparator("=").join(combinedRuntimeArgs);
     WRAPPERLOGGER.info("Pipeline '{}' is started by user '{}' with arguments {}",
                        context.getApplicationSpecification().getName(),
                        UserGroupInformation.getCurrentUser().getShortUserName(),
@@ -416,10 +422,9 @@ public class SmartWorkflow extends AbstractWorkflow {
     spec = GSON.fromJson(context.getWorkflowSpecification().getProperty(Constants.PIPELINE_SPEC_KEY),
                          BatchPipelineSpec.class);
     stageSpecs = new HashMap<>();
-    MacroEvaluator macroEvaluator = new DefaultMacroEvaluator(context.getToken(), newRuntimeArgs,
-                                                              context.getLogicalStartTime(), context,
+    MacroEvaluator macroEvaluator = new DefaultMacroEvaluator(pipelineArgs, context.getLogicalStartTime(), context,
                                                               context.getNamespace());
-    PipelineRuntime pipelineRuntime = new PipelineRuntime(context, workflowMetrics);
+
     PluginContext pluginContext = new PipelinePluginContext(context, workflowMetrics,
                                                             spec.isStageLoggingEnabled(),
                                                             spec.isProcessTimingEnabled());

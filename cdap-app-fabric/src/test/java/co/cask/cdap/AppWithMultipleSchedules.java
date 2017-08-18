@@ -71,6 +71,8 @@ public class AppWithMultipleSchedules extends AbstractApplication {
       setDescription("SomeWorkflow description");
       addAction(new SomeDummyAction());
     }
+
+
   }
 
   /**
