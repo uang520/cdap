@@ -42,6 +42,7 @@ import co.cask.cdap.api.metrics.NoopMetricsContext;
 import co.cask.cdap.api.plugin.PluginContext;
 import co.cask.cdap.api.plugin.PluginProperties;
 import co.cask.cdap.api.preview.DataTracer;
+import co.cask.cdap.api.schedule.TriggeringScheduleInfo;
 import co.cask.cdap.api.security.store.SecureStore;
 import co.cask.cdap.api.security.store.SecureStoreData;
 import co.cask.cdap.api.security.store.SecureStoreManager;
@@ -519,6 +520,15 @@ public abstract class AbstractContext extends AbstractServiceDiscoverer
   @Override
   public DataTracer getDataTracer(String dataTracerName) {
     return dataTracerFactory.getDataTracer(program.getId().getParent(), dataTracerName);
+  }
+
+  @Override
+  public TriggeringScheduleInfo getTriggeringScheduleInfo() {
+    String scheduleInfoString = runtimeArguments.get(ProgramOptionConstants.TRIGGERING_SCHEDULE_INFO);
+    if (scheduleInfoString == null) {
+      return null;
+    }
+    return GSON.fromJson(scheduleInfoString, TriggeringScheduleInfo.class);
   }
 
   /**

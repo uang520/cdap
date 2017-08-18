@@ -19,9 +19,11 @@ package co.cask.cdap.api;
 import co.cask.cdap.api.annotation.Beta;
 import co.cask.cdap.api.app.ApplicationSpecification;
 import co.cask.cdap.api.preview.DataTracer;
+import co.cask.cdap.api.schedule.TriggeringScheduleInfo;
 import org.apache.twill.api.RunId;
 
 import java.util.Map;
+import javax.annotation.Nullable;
 
 /**
  * This interface represents a context for a processor or elements of a processor.
@@ -65,4 +67,11 @@ public interface RuntimeContext {
    */
   @Beta
   DataTracer getDataTracer(String dataTracerName);
+
+  /**
+   * @return The information of the schedule if the current program is launched by a schedule.
+   *         Return {@code null} if the program is not launched by a schedule.
+   */
+  @Nullable
+  TriggeringScheduleInfo getTriggeringScheduleInfo();
 }

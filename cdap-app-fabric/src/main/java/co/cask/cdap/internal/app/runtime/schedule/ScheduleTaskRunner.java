@@ -16,7 +16,6 @@
 
 package co.cask.cdap.internal.app.runtime.schedule;
 
-import co.cask.cdap.api.schedule.TimeTriggerInfo;
 import co.cask.cdap.api.schedule.TriggerInfo;
 import co.cask.cdap.api.schedule.TriggeringScheduleInfo;
 import co.cask.cdap.app.runtime.ProgramController;

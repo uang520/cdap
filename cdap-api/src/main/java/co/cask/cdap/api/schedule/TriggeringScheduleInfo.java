@@ -19,7 +19,7 @@ package co.cask.cdap.api.schedule;
 import java.util.Map;
 
 /**
- * The information of a schedule to be passed to the program launched by it
+ * The information of a schedule that can be used by the program launched by the schedule.
  */
 public class TriggeringScheduleInfo {
 

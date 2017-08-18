@@ -18,6 +18,7 @@ package co.cask.cdap.datapipeline;
 
 import co.cask.cdap.api.ProgramStatus;
 import co.cask.cdap.api.app.ApplicationConfigurer;
+import co.cask.cdap.api.app.ApplicationSpecification;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.dataset.lib.CloseableIterator;
 import co.cask.cdap.api.dataset.lib.PartitionFilter;
@@ -25,8 +26,14 @@ import co.cask.cdap.api.dataset.lib.PartitionedFileSet;
 import co.cask.cdap.api.macro.MacroEvaluator;
 import co.cask.cdap.api.metrics.Metrics;
 import co.cask.cdap.api.plugin.PluginContext;
+import co.cask.cdap.api.schedule.AbstractCompositeTriggerInfo;
+import co.cask.cdap.api.schedule.ProgramStatusTriggerInfo;
+import co.cask.cdap.api.schedule.TriggerInfo;
+import co.cask.cdap.api.schedule.TriggeringScheduleInfo;
 import co.cask.cdap.api.workflow.AbstractWorkflow;
+import co.cask.cdap.api.workflow.Value;
 import co.cask.cdap.api.workflow.WorkflowContext;
+import co.cask.cdap.api.workflow.WorkflowToken;
 import co.cask.cdap.etl.api.Alert;
 import co.cask.cdap.etl.api.AlertPublisher;
 import co.cask.cdap.etl.api.AlertPublisherContext;
@@ -68,20 +75,25 @@ import co.cask.cdap.etl.spark.batch.ETLSpark;
 import co.cask.cdap.etl.spec.StageSpec;
 import co.cask.cdap.internal.io.SchemaTypeAdapter;
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -91,11 +103,17 @@ import java.util.Set;
 public class SmartWorkflow extends AbstractWorkflow {
   public static final String NAME = "DataPipelineWorkflow";
   public static final String DESCRIPTION = "Data Pipeline Workflow";
+  public static final String TRIGGERING_PROPERTIES_MAPPING = "triggeringPropertiesMapping";
+  public static final String TRIGGERING_RUNTIME_ARG = "runtime-arg";
+  public static final String TRIGGERING_PIPELINE_CONFIG = "pipeline-config";
+  public static final String TRIGGERING_TOKEN = "token";
+
   private static final Logger LOG = LoggerFactory.getLogger(SmartWorkflow.class);
   private static final Logger WRAPPERLOGGER = new LocationAwareMDCWrapperLogger(LOG, Constants.EVENT_TYPE_TAG,
                                                                                 Constants.PIPELINE_LIFECYCLE_TAG_VALUE);
   private static final Gson GSON = new GsonBuilder()
     .registerTypeAdapter(Schema.class, new SchemaTypeAdapter()).create();
+  private static final Type STRING_STRING_MAP = new TypeToken<Map<String, String>>() { }.getType();
 
   private final ApplicationConfigurer applicationConfigurer;
   private final Set<String> supportedPluginTypes;
@@ -243,11 +261,151 @@ public class SmartWorkflow extends AbstractWorkflow {
     addPrograms(start, programAdder);
   }
 
+  private Map<String, String> getNewRuntimeArgsFromScheduleInfo(TriggeringScheduleInfo scheduleInfo,
+                                                                Map<String, String> propertiesMap,
+                                                                Map<String, String> runtimeArgs) {
+    TriggerInfo triggerInfo = scheduleInfo.getTriggerInfo();
+    List<TriggerInfo> triggerInfoList = triggerInfo instanceof AbstractCompositeTriggerInfo ?
+      ((AbstractCompositeTriggerInfo) triggerInfo).getUnitTriggerInfos() : ImmutableList.of(triggerInfo);
+    List<ProgramStatusTriggerInfo> programStatusTriggerInfos = new ArrayList<>();
+    for (TriggerInfo info : triggerInfoList) {
+      if (info instanceof ProgramStatusTriggerInfo) {
+        programStatusTriggerInfos.add((ProgramStatusTriggerInfo) info);
+      }
+    }
+    // If no ProgramStatusTriggerInfo, no need of override the existing runtimeArgs
+    if (programStatusTriggerInfos.size() == 0) {
+      return runtimeArgs;
+    }
+    // The syntax for runtime args from the triggering pipeline is:
+    //   runtime-arg:<namespace>:<pipeline-name>#<runtime-arg-key>
+    // Stage configuration from triggering pipeline:
+    //   pipeline-config:<namespace>:<pipeline-name>#<pipeline-stage>:<stage-config-key>
+    // User tokens from the triggering pipeline:
+    //   token:<namespace>:<pipeline-name>#<node-name>:<user-token-key>
+    Map<String, String> newRuntimeArgs = new HashMap<>(runtimeArgs);
+    for (Map.Entry<String, String> entry : propertiesMap.entrySet()) {
+      String triggeringPropertyName = entry.getKey();
+      String[] propertyParts = triggeringPropertyName.split("#");
+      if (propertyParts.length != 2) {
+        LOG.debug("Triggering property name '{}' does not have 2 parts separated by '#'. Skip this entry.",
+                  triggeringPropertyName);
+        continue;
+      }
+      String[] categoryNamespacePipelineParts = propertyParts[0].split(":");
+      if (categoryNamespacePipelineParts.length != 3) {
+        LOG.debug("Triggering property name '{}' does not have 3 parts separated by ':' before '#'. Skip this entry.",
+                  triggeringPropertyName);
+        continue;
+      }
+      String categoryName = categoryNamespacePipelineParts[0];
+      String namepace = categoryNamespacePipelineParts[1];
+      String pipelineName = categoryNamespacePipelineParts[2];
+      switch (categoryName) {
+        case TRIGGERING_RUNTIME_ARG:
+          overrideWithTriggeringRuntimeArg(programStatusTriggerInfos, runtimeArgs, namepace,
+                                           pipelineName, propertyParts[1], entry.getValue());
+          break;
+        case TRIGGERING_TOKEN:
+          overrideWithTriggeringToken(programStatusTriggerInfos, runtimeArgs, namepace,
+                                      pipelineName, propertyParts[1], entry.getValue());
+          break;
+        case TRIGGERING_PIPELINE_CONFIG:
+          overrideWithPipelineConfig(programStatusTriggerInfos, runtimeArgs, namepace,
+                                     pipelineName, propertyParts[1], entry.getValue());
+          break;
+        default:
+          LOG.debug("Cannot find matching category for the category name '{}' in '{}'. Skip this entry.",
+                    categoryName, triggeringPropertyName);
+          break;
+      }
+    }
+    return newRuntimeArgs;
+  }
+
+  private void overrideWithTriggeringRuntimeArg(List<ProgramStatusTriggerInfo> programStatusTriggerInfos,
+                                                Map<String, String> runtimeArgs, String namespace, String pipelineName,
+                                                String triggeringKey, String overrideKey) {
+    for (ProgramStatusTriggerInfo triggerInfo : programStatusTriggerInfos) {
+      if (namespace.equals(triggerInfo.getNamespace()) &&
+        pipelineName.equals(triggerInfo.getApplicationSpecification().getName())) {
+        Map<String, String> triggerRuntimeArgs = triggerInfo.getRuntimeArguments();
+        if (triggerRuntimeArgs == null) {
+          continue;
+        }
+        String value = triggerRuntimeArgs.get(triggeringKey);
+        if (value == null) {
+          continue;
+        }
+        runtimeArgs.put(overrideKey, value);
+      }
+    }
+  }
+
+  private void overrideWithTriggeringToken(List<ProgramStatusTriggerInfo> programStatusTriggerInfos,
+                                           Map<String, String> runtimeArgs, String namespace, String pipelineName,
+                                           String triggeringKeyNodePair, String overrideKey) {
+    for (ProgramStatusTriggerInfo triggerInfo : programStatusTriggerInfos) {
+      if (namespace.equals(triggerInfo.getNamespace()) &&
+        pipelineName.equals(triggerInfo.getApplicationSpecification().getName())) {
+        WorkflowToken token = triggerInfo.getWorkflowToken();
+        if (token == null) {
+          continue;
+        }
+        String[] nodeKey = triggeringKeyNodePair.split(":");
+        // triggeringKeyNodePair should follow the format: <user-token-key>:<node-name>
+        if (nodeKey.length != 2) {
+          LOG.debug("Workflow token identifier  '{}' does not have 2 parts separated by ':', skip this entry.",
+                    triggeringKeyNodePair);
+          continue;
+        }
+        Value value = token.get(nodeKey[0], nodeKey[1]);
+        if (value == null) {
+          continue;
+        }
+        runtimeArgs.put(overrideKey, value.toString());
+      }
+    }
+  }
+
+  private void overrideWithPipelineConfig(List<ProgramStatusTriggerInfo> programStatusTriggerInfos,
+                                           Map<String, String> runtimeArgs, String namespace, String pipelineName,
+                                           String triggeringStageKeyPair, String overrideKey) {
+    for (ProgramStatusTriggerInfo triggerInfo : programStatusTriggerInfos) {
+      if (namespace.equals(triggerInfo.getNamespace()) &&
+        pipelineName.equals(triggerInfo.getApplicationSpecification().getName())) {
+        ApplicationSpecification appSpec = triggerInfo.getApplicationSpecification();
+        String[] stageKey = triggeringStageKeyPair.split(":");
+        // stageKey should follow the format: <pipeline-stage>:<stage-config-key>
+        if (stageKey.length != 2) {
+          LOG.debug("Pipeline Stage config identifier  '{}' does not have 2 parts separated by ':', skip this entry.",
+                    triggeringStageKeyPair);
+          continue;
+        }
+        String value = appSpec.getPlugins().get(stageKey[0]).getProperties().getProperties().get(stageKey[1]);
+        if (value == null) {
+          continue;
+        }
+        runtimeArgs.put(overrideKey, value);
+      }
+    }
+  }
+
   @Override
   public void initialize(WorkflowContext context) throws Exception {
+    Map<String, String> newRuntimeArgs = context.getRuntimeArguments();
+    TriggeringScheduleInfo scheduleInfo = context.getTriggeringScheduleInfo();
+    if (scheduleInfo != null) {
+      String propertiesMappingString = scheduleInfo.getProperties().get(TRIGGERING_PROPERTIES_MAPPING);
+      if (propertiesMappingString != null) {
+        Map<String, String> propertiesMap = GSON.fromJson(propertiesMappingString, STRING_STRING_MAP);
+        newRuntimeArgs =
+          getNewRuntimeArgsFromScheduleInfo(scheduleInfo, propertiesMap, context.getRuntimeArguments());
+      }
+    }
     super.initialize(context);
 
-    String arguments = Joiner.on(", ").withKeyValueSeparator("=").join(context.getRuntimeArguments());
+    String arguments = Joiner.on(", ").withKeyValueSeparator("=").join(newRuntimeArgs);
     WRAPPERLOGGER.info("Pipeline '{}' is started by user '{}' with arguments {}",
                        context.getApplicationSpecification().getName(),
                        UserGroupInformation.getCurrentUser().getShortUserName(),
@@ -258,7 +416,7 @@ public class SmartWorkflow extends AbstractWorkflow {
     spec = GSON.fromJson(context.getWorkflowSpecification().getProperty(Constants.PIPELINE_SPEC_KEY),
                          BatchPipelineSpec.class);
     stageSpecs = new HashMap<>();
-    MacroEvaluator macroEvaluator = new DefaultMacroEvaluator(context.getToken(), context.getRuntimeArguments(),
+    MacroEvaluator macroEvaluator = new DefaultMacroEvaluator(context.getToken(), newRuntimeArgs,
                                                               context.getLogicalStartTime(), context,
                                                               context.getNamespace());
     PipelineRuntime pipelineRuntime = new PipelineRuntime(context, workflowMetrics);
