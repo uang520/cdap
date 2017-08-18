@@ -16,6 +16,7 @@
 
 package co.cask.cdap.internal.app.runtime.schedule;
 
+import co.cask.cdap.api.schedule.TimeTriggerInfo;
 import co.cask.cdap.api.schedule.TriggerInfo;
 import co.cask.cdap.api.schedule.TriggeringScheduleInfo;
 import co.cask.cdap.app.runtime.ProgramController;
@@ -31,6 +32,7 @@ import co.cask.cdap.internal.app.runtime.AbstractListener;
 import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
 import co.cask.cdap.internal.app.runtime.schedule.queue.Job;
 import co.cask.cdap.internal.app.runtime.schedule.trigger.SatisfiableTrigger;
+import co.cask.cdap.internal.app.runtime.schedule.trigger.TimeTrigger;
 import co.cask.cdap.internal.app.runtime.schedule.trigger.TriggerInfoContext;
 import co.cask.cdap.internal.app.services.ProgramLifecycleService;
 import co.cask.cdap.internal.app.services.PropertiesResolver;
@@ -104,8 +106,19 @@ public final class ScheduleTaskRunner {
     }
     systemArgs.put(ProgramOptionConstants.SCHEDULE_NAME, schedule.getName());
     systemArgs.put(ProgramOptionConstants.EVENT_NOTIFICATIONS, GSON.toJson(job.getNotifications()));
-    TriggerInfo triggerInfo =
-      ((SatisfiableTrigger) job.getSchedule().getTrigger()).getTriggerInfo(new TriggerInfoContext(job, store));
+    SatisfiableTrigger trigger = ((SatisfiableTrigger) job.getSchedule().getTrigger());
+    TriggerInfoContext triggerInfoContext = new TriggerInfoContext(job, store);
+    TriggerInfo triggerInfo;
+    if (trigger instanceof TimeTrigger) {
+      // TimeTrigger#getTriggerInfo looks for the cron expression field in notification,
+      // which does not exist in notifications from pre-4.3 version. It's only safe to call TimeTrigger#getTriggerInfo
+      // for TimeTrigger inside a composite trigger, since composite trigger is introduced in 4.3.
+      // Call TimeTrigger#getTriggerInfoFromSingleNotification without matching cron expression
+      // for backward compatibility.
+      triggerInfo = ((TimeTrigger) trigger).getTriggerInfoFromSingleNotification(triggerInfoContext);
+    } else {
+      triggerInfo = trigger.getTriggerInfo(triggerInfoContext);
+    }
     systemArgs.put(ProgramOptionConstants.TRIGGERING_SCHEDULE_INFO,
                    GSON.toJson(new TriggeringScheduleInfo(schedule.getName(), schedule.getDescription(),
                                                           triggerInfo, schedule.getProperties())));
