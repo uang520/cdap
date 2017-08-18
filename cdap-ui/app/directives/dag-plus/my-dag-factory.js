@@ -17,13 +17,13 @@
 angular.module(PKG.name + '.commons')
   .factory('DAGPlusPlusFactory', function() {
     var defaultConnectionStyle = {
-      PaintStyle: {
+      paintStyle: {
         strokeStyle: '#4e5568',
         lineWidth: 2,
         outlineColor: 'transparent',
         outlineWidth: 4
       },
-      HoverPaintStyle: {
+      hoverPaintStyle: {
         strokeStyle: '#58b7f6',
         lineWidth: 4,
         dashstyle: 'solid'
@@ -40,8 +40,12 @@ angular.module(PKG.name + '.commons')
       }
     };
 
+    var solidConnectionStyle = {
+      paintStyle: { dashstyle: 'solid' }
+    };
+
     var dashedConnectionStyle = {
-      paintStyle: { dashstyle: '2 4'}
+      paintStyle: { dashstyle: '2 4' }
     };
 
     var conditionTrueConnectionStyle = {
@@ -60,6 +64,13 @@ angular.module(PKG.name + '.commons')
       dashstyle: '2 4'
     };
 
+    // Have to do this because jsPlumb expects key names of defaultSettings to be in PascalCase
+    var defaultConnectionStyleSettings = Object.assign({}, defaultConnectionStyle);
+    defaultConnectionStyleSettings['PaintStyle'] = defaultConnectionStyleSettings['paintStyle'];
+    delete defaultConnectionStyleSettings['paintStyle'];
+    defaultConnectionStyleSettings['HoverPaintStyle'] = defaultConnectionStyleSettings['hoverPaintStyle'];
+    delete defaultConnectionStyleSettings['hoverPaintStyle'];
+
     var defaultSettings = angular.extend({
       Anchor: [1, 0.5, 1, 0, 5, 0],
       Endpoint: 'Dot',
@@ -73,15 +84,17 @@ angular.module(PKG.name + '.commons')
             foldback: 0.8
         }]
       ]
-    }, defaultConnectionStyle);
+    }, defaultConnectionStyleSettings);
 
     function getSettings() {
       var settings = {
         default: defaultSettings,
+        defaultConnectionStyle,
         selectedConnectionStyle,
         conditionTrueConnectionStyle,
         conditionFalseConnectionStyle,
-        dashedConnectionStyle
+        dashedConnectionStyle,
+        solidConnectionStyle
       };
 
       return settings;

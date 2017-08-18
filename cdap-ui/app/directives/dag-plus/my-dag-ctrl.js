@@ -529,8 +529,27 @@ angular.module(PKG.name + '.commons')
       });
       connectionDropped = true;
 
-      if (valid && targetNode.type === 'condition') {
-        connObj.connection.setType('dashed');
+      // If valid, then modifies the look of the connection before showing it
+      if (valid) {
+        if (sourceNode.type !== 'condition' && targetNode.type !== 'condition') {
+          connObj.connection.setType('basic solid');
+        } else {
+          if (sourceNode.type === 'condition') {
+            if (connObj.connection.endpoints && connObj.connection.endpoints.length > 0) {
+              let sourceEndpoint = connObj.dropEndpoint;
+              if (sourceEndpoint.canvas.classList.contains('condition-endpoint-true')) {
+                connObj.connection.setType('conditionTrue');
+              } else if (sourceEndpoint.canvas.classList.contains('condition-endpoint-false')) {
+                connObj.connection.setType('conditionFalse');
+              }
+            }
+          } else {
+            connObj.connection.setType('basic');
+          }
+          if (targetNode.type === 'condition') {
+            connObj.connection.addType('dashed');
+          }
+        }
       }
 
       return valid;
@@ -687,16 +706,20 @@ angular.module(PKG.name + '.commons')
     }
 
     jsPlumb.ready(function() {
-      var dagSettings = DAGPlusPlusFactory.getSettings().default;
-      var dagSelectedConnectionStyle = DAGPlusPlusFactory.getSettings().selectedConnectionStyle;
-      var dagDashedConnectionStyle = DAGPlusPlusFactory.getSettings().dashedConnectionStyle;
-      vm.conditionTrueConnectionStyle = DAGPlusPlusFactory.getSettings().conditionTrueConnectionStyle;
-      vm.conditionFalseConnectionStyle = DAGPlusPlusFactory.getSettings().conditionFalseConnectionStyle;
+      var dagSettings = DAGPlusPlusFactory.getSettings();
+      var dagSettingsDefault = dagSettings.default;
+      var {defaultConnectionStyle, selectedConnectionStyle, dashedConnectionStyle, solidConnectionStyle} = dagSettings;
+      vm.conditionTrueConnectionStyle = dagSettings.conditionTrueConnectionStyle;
+      vm.conditionFalseConnectionStyle = dagSettings.conditionFalseConnectionStyle;
 
       jsPlumb.setContainer('dag-container');
-      vm.instance = jsPlumb.getInstance(dagSettings);
-      vm.instance.registerConnectionType('selected', dagSelectedConnectionStyle);
-      vm.instance.registerConnectionType('dashed', dagDashedConnectionStyle);
+      vm.instance = jsPlumb.getInstance(dagSettingsDefault);
+      vm.instance.registerConnectionType('basic', defaultConnectionStyle);
+      vm.instance.registerConnectionType('selected', selectedConnectionStyle);
+      vm.instance.registerConnectionType('dashed', dashedConnectionStyle);
+      vm.instance.registerConnectionType('solid', solidConnectionStyle);
+      vm.instance.registerConnectionType('conditionTrue', vm.conditionTrueConnectionStyle);
+      vm.instance.registerConnectionType('conditionFalse', vm.conditionFalseConnectionStyle);
 
       init();
 
