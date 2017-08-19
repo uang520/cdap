@@ -42,10 +42,12 @@ import co.cask.cdap.api.metrics.NoopMetricsContext;
 import co.cask.cdap.api.plugin.PluginContext;
 import co.cask.cdap.api.plugin.PluginProperties;
 import co.cask.cdap.api.preview.DataTracer;
+import co.cask.cdap.api.schedule.TriggerInfo;
 import co.cask.cdap.api.schedule.TriggeringScheduleInfo;
 import co.cask.cdap.api.security.store.SecureStore;
 import co.cask.cdap.api.security.store.SecureStoreData;
 import co.cask.cdap.api.security.store.SecureStoreManager;
+import co.cask.cdap.api.workflow.WorkflowToken;
 import co.cask.cdap.app.metrics.ProgramUserMetrics;
 import co.cask.cdap.app.preview.DataTracerFactory;
 import co.cask.cdap.app.program.Program;
@@ -70,13 +72,20 @@ import co.cask.cdap.data2.dataset2.SingleThreadDatasetCache;
 import co.cask.cdap.data2.metadata.lineage.AccessType;
 import co.cask.cdap.data2.transaction.RetryingShortTransactionSystemClient;
 import co.cask.cdap.data2.transaction.Transactions;
+import co.cask.cdap.internal.app.ApplicationSpecificationAdapter;
 import co.cask.cdap.internal.app.preview.DataTracerFactoryProvider;
 import co.cask.cdap.internal.app.program.ProgramTypeMetricTag;
 import co.cask.cdap.internal.app.runtime.messaging.BasicMessagingAdmin;
 import co.cask.cdap.internal.app.runtime.messaging.MultiThreadMessagingContext;
 import co.cask.cdap.internal.app.runtime.plugin.PluginInstantiator;
+import co.cask.cdap.internal.app.runtime.schedule.trigger.TriggerInfoCodec;
+import co.cask.cdap.internal.app.runtime.workflow.BasicWorkflowToken;
 import co.cask.cdap.messaging.MessagingService;
 import co.cask.cdap.proto.Notification;
+import co.cask.cdap.proto.WorkflowTokenDetail;
+import co.cask.cdap.proto.WorkflowTokenNodeDetail;
+import co.cask.cdap.proto.codec.WorkflowTokenDetailCodec;
+import co.cask.cdap.proto.codec.WorkflowTokenNodeDetailCodec;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.EntityId;
@@ -91,6 +100,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
 import org.apache.derby.iapi.services.i18n.MessageService;
 import org.apache.tephra.RetryStrategies;
 import org.apache.tephra.TransactionFailureException;
@@ -99,6 +112,7 @@ import org.apache.twill.api.RunId;
 import org.apache.twill.discovery.DiscoveryServiceClient;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -114,14 +128,25 @@ import javax.annotation.Nullable;
 public abstract class AbstractContext extends AbstractServiceDiscoverer
   implements SecureStore, LineageDatasetContext, Transactional, RuntimeContext, PluginContext, MessagingContext {
 
-  private static final Gson GSON =
-    new GsonBuilder().registerTypeAdapter(PartitionKey.class, new PartitionKeyCodec()).create();
+  private static final Gson GSON = ApplicationSpecificationAdapter.addTypeAdapters(new GsonBuilder())
+    .registerTypeAdapter(PartitionKey.class, new PartitionKeyCodec())
+    .registerTypeAdapter(TriggerInfo.class, new TriggerInfoCodec())
+    .registerTypeAdapter(WorkflowToken.class, new JsonDeserializer<WorkflowToken>() {
+      @Override
+      public WorkflowToken deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+        throws JsonParseException {
+        return context.deserialize(json, BasicWorkflowToken.class);
+      }
+    })
+    .create();
 
   private final CConfiguration cConf;
   private final Program program;
   private final ProgramOptions programOptions;
   private final ProgramRunId programRunId;
   private final Iterable<? extends EntityId> owners;
+  @Nullable
+  private final TriggeringScheduleInfo triggeringScheduleInfo;
   private final Map<String, String> runtimeArguments;
   private final Metrics userMetrics;
   private final MetricsContext programMetrics;
@@ -161,6 +186,7 @@ public abstract class AbstractContext extends AbstractServiceDiscoverer
     this.programOptions = programOptions;
     this.cConf = cConf;
     this.programRunId = program.getId().run(ProgramRunners.getRunId(programOptions));
+    this.triggeringScheduleInfo = getTriggeringScheduleInfo(programOptions);
     this.discoveryServiceClient = discoveryServiceClient;
     this.owners = createOwners(program.getId());
     this.programMetrics =
@@ -211,6 +237,15 @@ public abstract class AbstractContext extends AbstractServiceDiscoverer
     if (!multiThreaded) {
       datasetCache.addExtraTransactionAware(messagingContext);
     }
+  }
+
+  @Nullable
+  public static TriggeringScheduleInfo getTriggeringScheduleInfo(ProgramOptions programOptions) {
+    String scheduleInfoString = programOptions.getArguments().getOption(ProgramOptionConstants.TRIGGERING_SCHEDULE_INFO);
+    if (scheduleInfoString == null) {
+      return null;
+    }
+    return GSON.fromJson(scheduleInfoString, TriggeringScheduleInfo.class);
   }
 
   /**
@@ -522,13 +557,10 @@ public abstract class AbstractContext extends AbstractServiceDiscoverer
     return dataTracerFactory.getDataTracer(program.getId().getParent(), dataTracerName);
   }
 
+  @Nullable
   @Override
   public TriggeringScheduleInfo getTriggeringScheduleInfo() {
-    String scheduleInfoString = runtimeArguments.get(ProgramOptionConstants.TRIGGERING_SCHEDULE_INFO);
-    if (scheduleInfoString == null) {
-      return null;
-    }
-    return GSON.fromJson(scheduleInfoString, TriggeringScheduleInfo.class);
+    return triggeringScheduleInfo;
   }
 
   /**
