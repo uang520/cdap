@@ -23,6 +23,9 @@ import NamespaceStore from 'services/NamespaceStore';
 import {getRulesForActiveRuleBook, setError} from 'components/RulesEngineHome/RulesEngineStore/RulesEngineActions';
 import update from 'react/lib/update';
 import RulebookRule from 'components/RulesEngineHome/RuleBookDetails/RulebookRule';
+import { MyMetricApi } from 'api/metric';
+import {RadialChart} from 'react-vis';
+import isNil from 'lodash/isNil';
 import T from 'i18n-react';
 
 require('./RulesList.scss');
@@ -44,6 +47,7 @@ function collect(connect, monitor) {
   };
 }
 
+
 class RulesList extends Component {
   static propTypes = {
     rulebookid: PropTypes.string,
@@ -62,7 +66,42 @@ class RulesList extends Component {
   componentWillReceiveProps(nextProps) {
     this.setState({
       rulebookRules: nextProps.rules
+    }, () => {
+      if (Array.isArray(this.state.rulebookRules) && this.state.rulebookRules.length) {
+        let {selectedNamespace: namespace} = NamespaceStore.getState();
+        let metrics = this.state.rulebookRules.map((rule) => {
+          return `user.${rule.id}.fired`;
+        });
+        this.fetchRuleMetrics(namespace, metrics).subscribe((response) => {
+          let timeseries = response[`rule.metrics`].series;
+          let metricValues = {};
+          timeseries.map((series) => {
+            metricValues[series.metricName] = series.data.map((d) => d.value);
+          });
+          let rulebookRules = this.state.rulebookRules.map((rule) => {
+            return Object.assign({}, rule, {metric : metricValues[`user.${rule.id}.fired`]});
+          });
+          this.setState({rulebookRules});
+        }, () => {
+        });
+      }
     });
+  }
+
+  fetchRuleMetrics(namespaceId, metrics) {
+    let postBody = {};
+    postBody[`rule.metrics`] = {
+      tags: {
+        namespace: namespaceId,
+        app: '*'
+      },
+      metrics : metrics,
+      "timeRange": {
+        end: "now",
+        start : "now-1d"
+      }
+    };
+    return MyMetricApi.query(null, postBody);
   }
 
   addRuleToRulebook(rule) {
@@ -103,12 +142,44 @@ class RulesList extends Component {
     });
   };
 
+  generateAggregateStats = () => {
+    let metricTotal = {};
+    let total = 0;
+    if (Array.isArray(this.state.rulebookRules) && this.state.rulebookRules.length) {
+      this.state.rulebookRules.map((rule) => {
+        if (isNil(rule.metric)) {
+          return;
+        }
+        rule.metric.map((point) => {
+          if (!metricTotal[rule.id]) {
+            metricTotal[rule.id] = point;
+          } else {
+            metricTotal[rule.id]+= point;
+          }
+          total += point;
+        });
+      });
+      let angles = [];
+      for (var name in metricTotal) {
+        angles.push({angle : metricTotal[name] / total});
+      }
+      return angles;
+    }
+    return null;
+  }
+
   render() {
     let rules = this.state.rulebookRules;
+    let angles = this.generateAggregateStats();
     return this.props.connectDropTarget(
       <div className={classnames("rules-container", {
         'drag-hover': this.props.isOver
       })}>
+        <div>
+          {
+            isNil(angles) ? null : <RadialChart data={angles} width={200} height={200}/>
+          }
+        </div>
         <div className="title"> {T.translate(`${PREFIX}.rulesLabel`)} ({Array.isArray(rules) ? rules.length : 0}) </div>
         <div className="rules">
           {

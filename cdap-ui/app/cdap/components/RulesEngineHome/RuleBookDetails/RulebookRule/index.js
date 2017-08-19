@@ -19,7 +19,9 @@ import {Col} from 'reactstrap';
 import { DragSource, DropTarget } from 'react-dnd';
 import flow from 'lodash/flow';
 import classnames from 'classnames';
+import { Sparklines, SparklinesLine, SparklinesBars } from 'react-sparklines';
 import IconSVG from 'components/IconSVG';
+import isNil from 'lodash/isNil';
 import T from 'i18n-react';
 
 const PREFIX = 'features.RulesEngine.RulebookRule';
@@ -90,6 +92,7 @@ const dropTarget = {
   }
 };
 
+
 class RulebookRule extends Component {
   static propTypes = {
     index: PropTypes.number,
@@ -117,9 +120,9 @@ class RulebookRule extends Component {
         }}
       >
         <Col xs={1}>{index + 1}</Col>
-        <Col xs={3}>{rule.id}</Col>
+        <Col xs={2}>{rule.id}</Col>
         <Col xs={5}>{rule.description}</Col>
-        <Col xs={2}>
+        <Col xs={1}>
           <button
             className="btn btn-link remove-button"
             href
@@ -133,6 +136,15 @@ class RulebookRule extends Component {
             className="move-icon"
             name="icon-arrows-v"
           />
+        </Col>
+        <Col xs={2}>
+          {
+            isNil(rule.metric) ? null :
+              <Sparklines data={rule.metric} svgWidth={80} svgHeight={20} limit={10}>
+                <SparklinesBars style={{ fill: "#0099ff", fillOpacity: ".15" }} />
+                <SparklinesLine style={{ stroke: "#0099ff", fill: "none" }} />
+              </Sparklines>
+          }
         </Col>
       </div>
     ));
