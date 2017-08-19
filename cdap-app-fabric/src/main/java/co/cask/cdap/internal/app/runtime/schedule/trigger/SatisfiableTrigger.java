@@ -46,7 +46,7 @@ public interface SatisfiableTrigger extends Trigger {
   Set<String> getTriggerKeys();
 
   /**
-   * Get the {@link TriggerInfo} constructed from this trigger with the given context
+   * Get the {@link TriggerInfo} constructed from this trigger with the given context.
    *
    * @param context the {@link TriggerInfoContext} that provides necessary information to build the {@link TriggerInfo}
    * @return {@link TriggerInfo} of this trigger

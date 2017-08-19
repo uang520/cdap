@@ -54,9 +54,15 @@ public class ProgramStatusTrigger extends ProtoTrigger.ProgramStatusTrigger impl
   @Override
   public boolean isSatisfied(List<Notification> notifications) {
     for (Notification notification : notifications) {
+      if (!Notification.Type.PROGRAM_STATUS.equals(notification.getNotificationType())) {
+        continue;
+      }
       String programRunIdString = notification.getProperties().get(ProgramOptionConstants.PROGRAM_RUN_ID);
       String programRunStatusString = notification.getProperties().get(ProgramOptionConstants.PROGRAM_STATUS);
-
+      // Ignore notifications which specify an invalid programRunId or programStatus
+      if (programRunIdString == null || programRunStatusString == null) {
+        continue;
+      }
       ProgramStatus programStatus;
       try {
         programStatus = ProgramRunStatus.toProgramStatus(ProgramRunStatus.valueOf(programRunStatusString));
@@ -64,12 +70,6 @@ public class ProgramStatusTrigger extends ProtoTrigger.ProgramStatusTrigger impl
         // Return silently, this happens for statuses that are not meant to be scheduled
         continue;
       }
-
-      // Ignore notifications which specify an invalid programRunId or programStatus
-      if (programRunIdString == null || programStatus == null) {
-        continue;
-      }
-
       ProgramRunId programRunId = GSON.fromJson(programRunIdString, ProgramRunId.class);
       ProgramId triggeringProgramId = programRunId.getParent();
       if (this.programId.equals(triggeringProgramId) && programStatuses.contains(programStatus)) {
@@ -87,19 +87,20 @@ public class ProgramStatusTrigger extends ProtoTrigger.ProgramStatusTrigger impl
   @Override
   public TriggerInfo getTriggerInfo(TriggerInfoContext context) {
     for (Notification notification : context.getNotifications()) {
+      if (!Notification.Type.PROGRAM_STATUS.equals(notification.getNotificationType())) {
+        continue;
+      }
       String programRunIdString = notification.getProperties().get(ProgramOptionConstants.PROGRAM_RUN_ID);
       String programRunStatusString = notification.getProperties().get(ProgramOptionConstants.PROGRAM_STATUS);
-
+      // Ignore notifications which specify an invalid programRunId or programStatus
+      if (programRunIdString == null || programRunStatusString == null) {
+        continue;
+      }
       ProgramStatus programStatus;
       try {
         programStatus = ProgramRunStatus.toProgramStatus(ProgramRunStatus.valueOf(programRunStatusString));
       } catch (IllegalArgumentException e) {
         // Return silently, this happens for statuses that are not meant to be scheduled
-        continue;
-      }
-
-      // Ignore notifications which specify an invalid programRunId or programStatus
-      if (programRunIdString == null || programStatus == null) {
         continue;
       }
       ProgramRunId programRunId = GSON.fromJson(programRunIdString, ProgramRunId.class);

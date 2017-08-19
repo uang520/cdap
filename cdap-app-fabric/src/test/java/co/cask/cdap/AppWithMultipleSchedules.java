@@ -82,8 +82,15 @@ public class AppWithMultipleSchedules extends AbstractApplication {
     schedule(buildSchedule("WorkflowCompletedFailedSchedule", ProgramType.WORKFLOW, TRIGGERED_WORKFLOW)
                .triggerOnProgramStatus(ProgramType.WORKFLOW, SOME_WORKFLOW,
                                        ProgramStatus.COMPLETED, ProgramStatus.FAILED));
+
+    // Create a TRIGGERING_PROPERTIES_MAPPING which defines how runtime args and workflow tokens in ANOTHER_WORKFLOW
+    // will be used by TRIGGERED_WORKFLOW as workflow token
     Map<String, String> triggeringPropertiesMap =
+      // Use the value of runtime arg with key ANOTHER_RUNTIME_ARG_KEY in ANOTHER_WORKFLOW
+      // as the value of the workflow token with key TRIGGERED_RUNTIME_ARG_KEY in TRIGGERED_WORKFLOW
       ImmutableMap.of(String.format("runtime-arg#%s", ANOTHER_RUNTIME_ARG_KEY), TRIGGERED_RUNTIME_ARG_KEY,
+                      // Use the value of workflow token with key ANOTHER_TOKEN_KEY in ANOTHER_WORKFLOW
+                      // as the value of the workflow token with key TRIGGERED_TOKEN_KEY in TRIGGERED_WORKFLOW
                       String.format("token#%s:%s", ANOTHER_TOKEN_KEY, ANOTHER_WORKFLOW), TRIGGERED_TOKEN_KEY);
     schedule(buildSchedule(WORKFLOW_COMPLETED_SCHEDULE, ProgramType.WORKFLOW, TRIGGERED_WORKFLOW)
                .setProperties(ImmutableMap.of(ProgramOptionConstants.TRIGGERING_PROPERTIES_MAPPING,
@@ -163,13 +170,17 @@ public class AppWithMultipleSchedules extends AbstractApplication {
       super.initialize(context);
       TriggeringScheduleInfo scheduleInfo = context.getTriggeringScheduleInfo();
       if (scheduleInfo != null) {
+        // Get values of the runtime args and workflow token from the triggering program
+        // whose keys are defined as keys in TRIGGERING_PROPERTIES_MAPPING with a special syntax and use their values
+        // for the corresponding workflow tokens as defined in TRIGGERING_PROPERTIES_MAPPING values
         String propertiesMappingString =
           scheduleInfo.getProperties().get(ProgramOptionConstants.TRIGGERING_PROPERTIES_MAPPING);
         if (propertiesMappingString != null) {
           Map<String, String> propertiesMap = GSON.fromJson(propertiesMappingString, STRING_STRING_MAP);
-          Map<String, String> newRuntimeArgs =
-            getNewRuntimeArgsFromScheduleInfo(scheduleInfo, propertiesMap);
-          for (Map.Entry<String, String> entry : newRuntimeArgs.entrySet()) {
+          Map<String, String> newTokenMap =
+            getNewTokensFromScheduleInfo(scheduleInfo, propertiesMap);
+          for (Map.Entry<String, String> entry : newTokenMap.entrySet()) {
+            // Write the workflow token into context
             context.getToken().put(entry.getKey(), entry.getValue());
           }
         }
@@ -177,8 +188,8 @@ public class AppWithMultipleSchedules extends AbstractApplication {
     }
   }
 
-  private static Map<String, String> getNewRuntimeArgsFromScheduleInfo(TriggeringScheduleInfo scheduleInfo,
-                                                                       Map<String, String> propertiesMap) {
+  private static Map<String, String> getNewTokensFromScheduleInfo(TriggeringScheduleInfo scheduleInfo,
+                                                                  Map<String, String> propertiesMap) {
     TriggerInfo triggerInfo = scheduleInfo.getTriggerInfo();
     List<TriggerInfo> triggerInfoList = triggerInfo instanceof AbstractCompositeTriggerInfo ?
       ((AbstractCompositeTriggerInfo) triggerInfo).getUnitTriggerInfos() : ImmutableList.of(triggerInfo);

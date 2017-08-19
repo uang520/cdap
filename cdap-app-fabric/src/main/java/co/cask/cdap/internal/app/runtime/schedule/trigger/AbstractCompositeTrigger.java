@@ -91,7 +91,7 @@ public abstract class AbstractCompositeTrigger extends ProtoTrigger.AbstractComp
 
   public List<TriggerInfo> getUnitTriggerInfos(TriggerInfoContext context) {
     List<TriggerInfo> unitTriggerInfos = new ArrayList<>();
-    for (Set<SatisfiableTrigger> triggeSet : unitTriggers.values()) {
+    for (Set<SatisfiableTrigger> triggeSet : getUnitTriggers().values()) {
       for (SatisfiableTrigger trigger : triggeSet) {
         unitTriggerInfos.add(trigger.getTriggerInfo(context));
       }

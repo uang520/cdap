@@ -17,13 +17,11 @@
 package co.cask.cdap.internal.app.runtime.schedule.trigger;
 
 import co.cask.cdap.api.schedule.TimeTriggerInfo;
-import co.cask.cdap.api.schedule.TriggerInfo;
 import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
 import co.cask.cdap.internal.app.runtime.schedule.SchedulerException;
 import co.cask.cdap.internal.app.runtime.schedule.store.Schedulers;
 import co.cask.cdap.proto.Notification;
 import co.cask.cdap.proto.ProtoTrigger;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;

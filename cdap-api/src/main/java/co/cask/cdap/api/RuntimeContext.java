@@ -69,7 +69,7 @@ public interface RuntimeContext {
   DataTracer getDataTracer(String dataTracerName);
 
   /**
-   * @return The information of the schedule if the current program is launched by a schedule.
+   * @return The information of the schedule that launches this program.
    *         Return {@code null} if the program is not launched by a schedule.
    */
   @Nullable

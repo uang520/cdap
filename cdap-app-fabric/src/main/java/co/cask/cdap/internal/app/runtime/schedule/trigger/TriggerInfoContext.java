@@ -27,7 +27,6 @@ import co.cask.cdap.proto.Notification;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ProgramId;
-import co.cask.cdap.proto.id.ScheduleId;
 import co.cask.cdap.proto.id.WorkflowId;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -39,7 +38,7 @@ import javax.annotation.Nullable;
 
 /**
  * Context object, exposing information that may be useful during the construction of
- * {@link co.cask.cdap.api.schedule.TriggerInfo}.
+ * {@link co.cask.cdap.api.schedule.TriggerInfo} for a trigger.
  */
 public class TriggerInfoContext {
   private static final Gson GSON = new Gson();
@@ -53,10 +52,16 @@ public class TriggerInfoContext {
     this.store = store;
   }
 
+  /**
+   * @return The {@link ProgramSchedule} which contains the trigger.
+   */
   public ProgramSchedule getSchedule() {
     return job.getSchedule();
   }
 
+  /**
+   * @return A list of notifications which satisfy the trigger.
+   */
   public List<Notification> getNotifications() {
     return job.getNotifications();
   }
@@ -65,6 +70,9 @@ public class TriggerInfoContext {
     return store.getApplication(applicationId);
   }
 
+  /**
+   * @return The workflow token if the program is a workflow, {@code null} otherwise.
+   */
   @Nullable
   public WorkflowToken getWorkflowToken(ProgramId programId, String runId) {
     if (!programId.getType().equals(ProgramType.WORKFLOW)) {
