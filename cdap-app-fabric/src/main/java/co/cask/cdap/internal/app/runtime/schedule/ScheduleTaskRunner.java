@@ -107,17 +107,7 @@ public final class ScheduleTaskRunner {
     systemArgs.put(ProgramOptionConstants.EVENT_NOTIFICATIONS, GSON.toJson(job.getNotifications()));
     SatisfiableTrigger trigger = ((SatisfiableTrigger) job.getSchedule().getTrigger());
     TriggerInfoContext triggerInfoContext = new TriggerInfoContext(job, store);
-    TriggerInfo triggerInfo;
-    if (trigger instanceof TimeTrigger) {
-      // TimeTrigger#getTriggerInfo looks for the cron expression field in notification,
-      // which does not exist in notifications from pre-4.3 version. It's only safe to call TimeTrigger#getTriggerInfo
-      // for TimeTrigger inside a composite trigger, since composite trigger is introduced in 4.3.
-      // Call TimeTrigger#getTriggerInfoFromSingleNotification without matching cron expression
-      // for backward compatibility.
-      triggerInfo = ((TimeTrigger) trigger).getTriggerInfoFromSingleNotification(triggerInfoContext);
-    } else {
-      triggerInfo = trigger.getTriggerInfo(triggerInfoContext);
-    }
+    TriggerInfo triggerInfo = trigger.getTriggerInfo(triggerInfoContext);
     systemArgs.put(ProgramOptionConstants.TRIGGERING_SCHEDULE_INFO,
                    GSON.toJson(new TriggeringScheduleInfo(schedule.getName(), schedule.getDescription(),
                                                           triggerInfo, schedule.getProperties())));

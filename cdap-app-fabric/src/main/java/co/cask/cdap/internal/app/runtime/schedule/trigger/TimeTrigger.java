@@ -72,8 +72,14 @@ public class TimeTrigger extends ProtoTrigger.TimeTrigger implements Satisfiable
 
   @Override
   public TimeTriggerInfo getTriggerInfo(TriggerInfoContext context) {
+    boolean isTimeTrigger = context.getSchedule().getTrigger() instanceof TimeTrigger;
     for (Notification notification : context.getNotifications()) {
       if (!notification.getNotificationType().equals(Notification.Type.TIME)) {
+        if (isTimeTrigger) {
+          LOG.warn("The notification '{}' in the job of schedule '{}' is expected with type '{}' but it is not.",
+                   notification, context.getSchedule(), Notification.Type.TIME.name());
+          return new TimeTriggerInfo(cronExpression, null);
+        }
         continue;
       }
       String systemOverridesString = notification.getProperties().get(ProgramOptionConstants.SYSTEM_OVERRIDES);
@@ -81,47 +87,23 @@ public class TimeTrigger extends ProtoTrigger.TimeTrigger implements Satisfiable
       if (systemOverridesString == null || userOverridesString == null) {
         continue;
       }
-      Map<String, String> systemOverrides = GSON.fromJson(systemOverridesString, STRING_STRING_MAP);
       Map<String, String> userOverrides = GSON.fromJson(userOverridesString, STRING_STRING_MAP);
-
+      // No need to check for cron expression field in notification if the trigger in schedule is TimeTrigger,
+      // because it's only required to use cron expression to distinguish the TIME notifications for
+      // different TimeTrigger's in composite triggers. This is keeps the compatibility with notifications from
+      // pre-4.3 version, since cron expression field in TIME notification is introduced in 4.3
+      // together with composite trigger.
+      String logicalStartTime = userOverrides.get(ProgramOptionConstants.LOGICAL_START_TIME);
+      if (isTimeTrigger) {
+        return new TimeTriggerInfo(cronExpression, logicalStartTime);
+      }
+      Map<String, String> systemOverrides = GSON.fromJson(systemOverridesString, STRING_STRING_MAP);
       if (cronExpression.equals(systemOverrides.get(ProgramOptionConstants.CRON_EXPRESSION))) {
-
-        String logicalStartTime = userOverrides.get(ProgramOptionConstants.LOGICAL_START_TIME);
         return new TimeTriggerInfo(cronExpression, logicalStartTime);
       }
     }
     LOG.debug("No logical start time found from notifications {} for TimeTrigger with cron expression '{}' " +
                 "in schedule '{}'", context.getNotifications(), cronExpression, context.getSchedule());
     return new TimeTriggerInfo(cronExpression, null);
-  }
-
-  public TimeTriggerInfo getTriggerInfoFromSingleNotification(TriggerInfoContext context) throws SchedulerException {
-    // TimeTrigger is satisfied as soon as the first Notification arrives,
-    // due to how the Notification is initially created and processed.
-    if (context.getNotifications().size() != 1) {
-      throw new SchedulerException(String.format("There should be only 1 notification in the job of schedule '%s' " +
-                                                   "with satisfied TimeTrigger, but there are notifications '%s'",
-                                                 context.getSchedule(), context.getNotifications()));
-    }
-    Notification notification = context.getNotifications().get(0);
-    if (!notification.getNotificationType().equals(Notification.Type.TIME)) {
-      throw new SchedulerException(String.format("The notification '%s' in the job of schedule '%s' " +
-                                                   "is expected with type '%s' but it is not.",
-                                                 notification, context.getSchedule(), Notification.Type.TIME.name()));
-    }
-    String userOverridesString = notification.getProperties().get(ProgramOptionConstants.USER_OVERRIDES);
-    if (userOverridesString == null) {
-      LOG.debug("No user overrides found from notification {} for TimeTrigger with cron expression '{}' " +
-                  "in schedule '{}'", notification, cronExpression, context.getSchedule());
-      return new TimeTriggerInfo(cronExpression, null);
-    }
-    Map<String, String> userOverrides = GSON.fromJson(userOverridesString, STRING_STRING_MAP);
-    String logicalStartTime = userOverrides.get(ProgramOptionConstants.LOGICAL_START_TIME);
-    if (logicalStartTime == null) {
-      LOG.debug("No logical start time found from notification {} for TimeTrigger with cron expression '{}' " +
-                  "in schedule '{}'", notification, cronExpression, context.getSchedule());
-      return new TimeTriggerInfo(cronExpression, null);
-    }
-    return new TimeTriggerInfo(cronExpression, logicalStartTime);
   }
 }
