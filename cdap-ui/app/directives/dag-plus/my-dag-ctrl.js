@@ -287,11 +287,12 @@ angular.module(PKG.name + '.commons')
             anchor: 'Right',
             cssClass: 'condition-endpoint condition-endpoint-true',
             isSource: true,
+            maxConnections: -1,
             endpoint: 'Dot',
             uuid: 'True' + node.name,
             connectorStyle: vm.conditionTrueConnectionStyle,
             overlays: [
-              [ 'Label', { label:'Yes', id:'yesLabel', location:[0.5, -0.55], cssClass: 'condition-label' } ]
+              [ 'Label', { label:'Yes', id:' yesLabel', location:[0.5, -0.55], cssClass: 'condition-label' } ]
             ]
           });
           newTrueEndpoint.hideOverlay('yesLabel');
@@ -300,11 +301,12 @@ angular.module(PKG.name + '.commons')
             anchor: 'Bottom',
             cssClass: 'condition-endpoint condition-endpoint-false',
             isSource: true,
+            maxConnections: -1,
             endpoint: 'Dot',
             uuid: 'False' + node.name,
             connectorStyle: vm.conditionFalseConnectionStyle,
             overlays: [
-              [ 'Label', { label:'No', id:'noLabel', location:[0.5, -0.55], cssClass: 'condition-label' } ]
+              [ 'Label', { label:'No', id:' noLabel', location:[0.5, -0.55], cssClass: 'condition-label' } ]
             ]
           });
           newFalseEndpoint.hideOverlay('noLabel');
@@ -347,7 +349,7 @@ angular.module(PKG.name + '.commons')
         }
 
         let newConn = vm.instance.connect(connObj);
-        if (targetNode.type === 'condition') {
+        if (targetNode.type === 'condition' || sourceNode.type === 'action' || targetNode.type === 'action') {
           newConn.setType('dashed');
         }
       });
@@ -531,7 +533,9 @@ angular.module(PKG.name + '.commons')
 
       // If valid, then modifies the look of the connection before showing it
       if (valid) {
-        if (sourceNode.type !== 'condition' && targetNode.type !== 'condition') {
+        if (sourceNode.type === 'action' || targetNode.type === 'action') {
+          connObj.connection.setType('dashed');
+        } else if (sourceNode.type !== 'condition' && targetNode.type !== 'condition') {
           connObj.connection.setType('basic solid');
         } else {
           if (sourceNode.type === 'condition') {
