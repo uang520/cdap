@@ -280,8 +280,8 @@ public class SmartWorkflow extends AbstractWorkflow {
     }
     // The syntax for runtime args from the triggering pipeline is:
     //   runtime-arg:<namespace>:<pipeline-name>#<runtime-arg-key>
-    // Stage configuration from triggering pipeline:
-    //   pipeline-config:<namespace>:<pipeline-name>#<pipeline-stage>:<stage-config-key>
+    // Plugin property from triggering pipeline:
+    //   plugin-property:<namespace>:<pipeline-name>#<plugin-name>:<plugin-property-key>
     // User tokens from the triggering pipeline:
     //   token:<namespace>:<pipeline-name>#<user-token-key>:<node-name>
     for (Map.Entry<String, String> entry : propertiesMap.entrySet()) {
@@ -370,19 +370,19 @@ public class SmartWorkflow extends AbstractWorkflow {
 
   private void addPipelineConfig(List<ProgramStatusTriggerInfo> programStatusTriggerInfos,
                                  Map<String, String> runtimeArgs, String namespace, String pipelineName,
-                                 String triggeringStageKeyPair, String currentKey) {
+                                 String triggeringPluginKeyPair, String currentKey) {
     for (ProgramStatusTriggerInfo triggerInfo : programStatusTriggerInfos) {
       if (namespace.equals(triggerInfo.getNamespace()) &&
         pipelineName.equals(triggerInfo.getApplicationSpecification().getName())) {
         ApplicationSpecification appSpec = triggerInfo.getApplicationSpecification();
-        String[] stageKey = triggeringStageKeyPair.split(":");
-        // stageKey should follow the format: <pipeline-stage>:<stage-config-key>
-        if (stageKey.length != 2) {
+        String[] pluginKey = triggeringPluginKeyPair.split(":");
+        // pluginKey should follow the format: <plugin-name>:<plugin-property-key>
+        if (pluginKey.length != 2) {
           LOG.debug("Pipeline Stage config identifier  '{}' does not have 2 parts separated by ':', skip this entry.",
-                    triggeringStageKeyPair);
+                    triggeringPluginKeyPair);
           continue;
         }
-        String value = appSpec.getPlugins().get(stageKey[0]).getProperties().getProperties().get(stageKey[1]);
+        String value = appSpec.getPlugins().get(pluginKey[0]).getProperties().getProperties().get(pluginKey[1]);
         if (value == null) {
           continue;
         }

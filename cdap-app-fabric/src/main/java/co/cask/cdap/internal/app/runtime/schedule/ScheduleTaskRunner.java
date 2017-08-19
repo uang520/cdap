@@ -31,7 +31,6 @@ import co.cask.cdap.internal.app.runtime.AbstractListener;
 import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
 import co.cask.cdap.internal.app.runtime.schedule.queue.Job;
 import co.cask.cdap.internal.app.runtime.schedule.trigger.SatisfiableTrigger;
-import co.cask.cdap.internal.app.runtime.schedule.trigger.TimeTrigger;
 import co.cask.cdap.internal.app.runtime.schedule.trigger.TriggerInfoContext;
 import co.cask.cdap.internal.app.services.ProgramLifecycleService;
 import co.cask.cdap.internal.app.services.PropertiesResolver;
@@ -85,35 +84,28 @@ public final class ScheduleTaskRunner {
     ProgramSchedule schedule = job.getSchedule();
     ProgramId programId = schedule.getProgramId();
     Map<String, String> userArgs = Maps.newHashMap();
-    Map<String, String> systemArgs = Maps.newHashMap();
-    // notificationProperties is present only in jobs containing schedules with TimeTrigger and StreamSizeTrigger.
-    // Since both triggers are satisfied by the first notification, there can be only one notification in in the job
-    Map<String, String> notificationProperties = job.getNotifications().get(0).getProperties();
     userArgs.putAll(schedule.getProperties());
     userArgs.putAll(propertiesResolver.getUserProperties(programId.toId()));
-    String userOverridesString = notificationProperties.get(ProgramOptionConstants.USER_OVERRIDES);
-    if (userOverridesString != null) {
-      Map<String, String> userOverrides = GSON.fromJson(userOverridesString, STRING_STRING_MAP);
-      userArgs.putAll(userOverrides);
-    }
 
+    Map<String, String> systemArgs = Maps.newHashMap();
     systemArgs.putAll(propertiesResolver.getSystemProperties(programId.toId()));
-    String systemOverridesString = notificationProperties.get(ProgramOptionConstants.SYSTEM_OVERRIDES);
-    if (systemOverridesString != null) {
-      Map<String, String> systemOverrides = GSON.fromJson(systemOverridesString, STRING_STRING_MAP);
-      systemArgs.putAll(systemOverrides);
-    }
     systemArgs.put(ProgramOptionConstants.SCHEDULE_NAME, schedule.getName());
     systemArgs.put(ProgramOptionConstants.EVENT_NOTIFICATIONS, GSON.toJson(job.getNotifications()));
-    SatisfiableTrigger trigger = ((SatisfiableTrigger) job.getSchedule().getTrigger());
-    TriggerInfoContext triggerInfoContext = new TriggerInfoContext(job, store);
-    TriggerInfo triggerInfo = trigger.getTriggerInfo(triggerInfoContext);
     systemArgs.put(ProgramOptionConstants.TRIGGERING_SCHEDULE_INFO,
-                   GSON.toJson(new TriggeringScheduleInfo(schedule.getName(), schedule.getDescription(),
-                                                          triggerInfo, schedule.getProperties())));
+                   GSON.toJson(getTriggeringScheduleInfo(job, schedule, systemArgs, userArgs)));
 
     execute(programId, systemArgs, userArgs);
     LOG.info("Successfully started program {} in schedule {}.", schedule.getProgramId(), schedule.getName());
+  }
+
+  private TriggeringScheduleInfo getTriggeringScheduleInfo(Job job, ProgramSchedule schedule,
+                                                           Map<String, String> systemArgs,
+                                                           Map<String, String> userArgs) {
+    TriggerInfoContext triggerInfoContext = new TriggerInfoContext(job, store);
+    SatisfiableTrigger trigger = ((SatisfiableTrigger) job.getSchedule().getTrigger());
+    TriggerInfo triggerInfo = trigger.getTriggerInfoAddArgumentOverrides(triggerInfoContext, systemArgs, userArgs);
+    return new TriggeringScheduleInfo(schedule.getName(), schedule.getDescription(),
+                                      triggerInfo, schedule.getProperties());
   }
 
   /**

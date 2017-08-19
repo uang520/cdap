@@ -21,6 +21,7 @@ import co.cask.cdap.api.schedule.TriggerInfo;
 import co.cask.cdap.proto.Notification;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -49,7 +50,10 @@ public interface SatisfiableTrigger extends Trigger {
    * Get the {@link TriggerInfo} constructed from this trigger with the given context.
    *
    * @param context the {@link TriggerInfoContext} that provides necessary information to build the {@link TriggerInfo}
+   * @param sysArgs system runtime arguments to override with appropriate notification properties
+   * @param userArgs user runtime arguments to override with appropriate notification properties
    * @return {@link TriggerInfo} of this trigger
    */
-  TriggerInfo getTriggerInfo(TriggerInfoContext context);
+  TriggerInfo getTriggerInfoAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
+                                                 Map<String, String> userArgs);
 }

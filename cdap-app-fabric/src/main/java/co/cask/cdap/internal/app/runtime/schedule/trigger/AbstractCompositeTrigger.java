@@ -89,11 +89,12 @@ public abstract class AbstractCompositeTrigger extends ProtoTrigger.AbstractComp
     }
   }
 
-  public List<TriggerInfo> getUnitTriggerInfos(TriggerInfoContext context) {
+  public List<TriggerInfo> getUnitTriggerInfosAddRuntimeArgs(TriggerInfoContext context, Map<String, String> sysArgs,
+                                                             Map<String, String> userArgs) {
     List<TriggerInfo> unitTriggerInfos = new ArrayList<>();
     for (Set<SatisfiableTrigger> triggeSet : getUnitTriggers().values()) {
       for (SatisfiableTrigger trigger : triggeSet) {
-        unitTriggerInfos.add(trigger.getTriggerInfo(context));
+        unitTriggerInfos.add(trigger.getTriggerInfoAddArgumentOverrides(context, sysArgs, userArgs));
       }
     }
     return unitTriggerInfos;

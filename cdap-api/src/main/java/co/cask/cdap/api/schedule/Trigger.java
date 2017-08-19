@@ -31,8 +31,8 @@ public interface Trigger {
     PARTITION("partition"),
     STREAM_SIZE("stream-size"),
     PROGRAM_STATUS("program-status"),
-    AND("and", true),
-    OR("or", true);
+    AND("and"),
+    OR("or");
 
     private static final Map<String, Type> CATEGORY_MAP;
 
@@ -44,15 +44,9 @@ public interface Trigger {
     }
 
     private final String categoryName;
-    private final boolean isComposite;
 
     Type(String categoryName) {
-      this(categoryName, false);
-    }
-
-    Type(String categoryName, boolean isComposite) {
       this.categoryName = categoryName;
-      this.isComposite = isComposite;
     }
 
     /**
@@ -74,16 +68,6 @@ public interface Trigger {
         throw new IllegalArgumentException("Unknown category name " + categoryName);
       }
       return type;
-    }
-
-    /**
-     * Whether the trigger type represents a composite trigger, i.e. a trigger that can
-     * contains multiple triggers internally.
-     *
-     * @return {@code true} if the trigger type represents a composite trigger, {@code false} otherwise
-     */
-    public boolean isComposite() {
-      return isComposite;
     }
   }
 

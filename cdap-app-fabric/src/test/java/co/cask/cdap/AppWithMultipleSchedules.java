@@ -28,7 +28,6 @@ import co.cask.cdap.api.workflow.AbstractWorkflow;
 import co.cask.cdap.api.workflow.Value;
 import co.cask.cdap.api.workflow.WorkflowContext;
 import co.cask.cdap.api.workflow.WorkflowToken;
-import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
@@ -60,6 +59,7 @@ public class AppWithMultipleSchedules extends AbstractApplication {
   public static final String ANOTHER_TOKEN_VALUE = "AnotherWorkflowTokenValue";
   public static final String TRIGGERED_RUNTIME_ARG_KEY = "TriggeredWorkflowRuntimeArgKey";
   public static final String TRIGGERED_TOKEN_KEY = "TriggeredWorkflowTokenKey";
+  public static final String TRIGGERING_PROPERTIES_MAPPING = "triggering.properties.mapping";
 
   @Override
   public void configure() {
@@ -93,8 +93,7 @@ public class AppWithMultipleSchedules extends AbstractApplication {
                       // as the value of the workflow token with key TRIGGERED_TOKEN_KEY in TRIGGERED_WORKFLOW
                       String.format("token#%s:%s", ANOTHER_TOKEN_KEY, ANOTHER_WORKFLOW), TRIGGERED_TOKEN_KEY);
     schedule(buildSchedule(WORKFLOW_COMPLETED_SCHEDULE, ProgramType.WORKFLOW, TRIGGERED_WORKFLOW)
-               .setProperties(ImmutableMap.of(ProgramOptionConstants.TRIGGERING_PROPERTIES_MAPPING,
-                                              GSON.toJson(triggeringPropertiesMap)))
+               .setProperties(ImmutableMap.of(TRIGGERING_PROPERTIES_MAPPING, GSON.toJson(triggeringPropertiesMap)))
                .triggerOnProgramStatus(ProgramType.WORKFLOW, ANOTHER_WORKFLOW, ProgramStatus.COMPLETED));
   }
 
@@ -174,7 +173,7 @@ public class AppWithMultipleSchedules extends AbstractApplication {
         // whose keys are defined as keys in TRIGGERING_PROPERTIES_MAPPING with a special syntax and use their values
         // for the corresponding workflow tokens as defined in TRIGGERING_PROPERTIES_MAPPING values
         String propertiesMappingString =
-          scheduleInfo.getProperties().get(ProgramOptionConstants.TRIGGERING_PROPERTIES_MAPPING);
+          scheduleInfo.getProperties().get(TRIGGERING_PROPERTIES_MAPPING);
         if (propertiesMappingString != null) {
           Map<String, String> propertiesMap = GSON.fromJson(propertiesMappingString, STRING_STRING_MAP);
           Map<String, String> newTokenMap =

@@ -22,7 +22,7 @@ import java.util.List;
  * Base class for the composite trigger information to be passed to the triggered program.
  */
 public abstract class AbstractCompositeTriggerInfo extends TriggerInfo {
-  List<TriggerInfo> unitTriggerInfos;
+  private final List<TriggerInfo> unitTriggerInfos;
 
   public AbstractCompositeTriggerInfo(Trigger.Type type, List<TriggerInfo> unitTriggerInfos) {
     super(type);

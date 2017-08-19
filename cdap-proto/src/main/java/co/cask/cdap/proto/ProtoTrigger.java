@@ -155,7 +155,7 @@ public abstract class ProtoTrigger implements Trigger {
 
     @Override
     public void validate() {
-      if (!getType().isComposite()) {
+      if (!getType().equals(Type.AND) || !getType().equals(Type.OR)) {
         throw new IllegalArgumentException("Trigger type " + getType().name() + " is not a composite trigger.");
       }
       Trigger[] internalTriggers = getTriggers();

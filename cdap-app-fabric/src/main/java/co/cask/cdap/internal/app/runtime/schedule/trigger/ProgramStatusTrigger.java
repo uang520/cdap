@@ -34,6 +34,7 @@ import com.google.gson.Gson;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -85,7 +86,8 @@ public class ProgramStatusTrigger extends ProtoTrigger.ProgramStatusTrigger impl
   }
 
   @Override
-  public TriggerInfo getTriggerInfo(TriggerInfoContext context) {
+  public TriggerInfo getTriggerInfoAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
+                                                        Map<String, String> userArgs) {
     for (Notification notification : context.getNotifications()) {
       if (!Notification.Type.PROGRAM_STATUS.equals(notification.getNotificationType())) {
         continue;

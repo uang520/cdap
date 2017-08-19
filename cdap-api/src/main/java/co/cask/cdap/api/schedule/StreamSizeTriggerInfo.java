@@ -20,9 +20,9 @@ package co.cask.cdap.api.schedule;
  * The stream size trigger information to be passed to the triggered program.
  */
 public class StreamSizeTriggerInfo extends TriggerInfo {
-  String streamNamespace;
-  String streamName;
-  int triggerMB;
+  private final String streamNamespace;
+  private final String streamName;
+  private final int triggerMB;
 
   public StreamSizeTriggerInfo(String streamNamespace, String streamName, int triggerMB) {
     super(Trigger.Type.STREAM_SIZE);

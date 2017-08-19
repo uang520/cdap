@@ -240,7 +240,7 @@ public abstract class AbstractContext extends AbstractServiceDiscoverer
   }
 
   @Nullable
-  public static TriggeringScheduleInfo getTriggeringScheduleInfo(ProgramOptions programOptions) {
+  private static TriggeringScheduleInfo getTriggeringScheduleInfo(ProgramOptions programOptions) {
     String scheduleInfoString = programOptions.getArguments().getOption(ProgramOptionConstants.TRIGGERING_SCHEDULE_INFO);
     if (scheduleInfoString == null) {
       return null;

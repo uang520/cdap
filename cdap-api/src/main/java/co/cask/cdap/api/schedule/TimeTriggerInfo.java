@@ -24,7 +24,7 @@ import javax.annotation.Nullable;
 public class TimeTriggerInfo extends TriggerInfo {
   private final String cronExpression;
   @Nullable
-  private String logicalStartTime;
+  private final String logicalStartTime;
 
   public TimeTriggerInfo(String cronExpression, @Nullable String logicalStartTime) {
     super(Trigger.Type.TIME);

@@ -22,6 +22,7 @@ import co.cask.cdap.api.schedule.TriggerInfo;
 import co.cask.cdap.proto.Notification;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * A Trigger that schedules a ProgramSchedule, when all internal triggers are satisfied.
@@ -43,7 +44,8 @@ public class AndTrigger extends AbstractCompositeTrigger implements SatisfiableT
   }
 
   @Override
-  public TriggerInfo getTriggerInfo(TriggerInfoContext context) {
-    return new AndTriggerInfo(getUnitTriggerInfos(context));
+  public TriggerInfo getTriggerInfoAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
+                                                        Map<String, String> userArgs) {
+    return new AndTriggerInfo(getUnitTriggerInfosAddRuntimeArgs(context, sysArgs, userArgs));
   }
 }
