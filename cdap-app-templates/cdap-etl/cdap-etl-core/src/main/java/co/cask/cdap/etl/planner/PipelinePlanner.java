@@ -137,7 +137,6 @@ public class PipelinePlanner {
       }
     }
 
-
     Map<String, String> connectorNodes = new HashMap<>();
     Set<Dag> splittedDags = split(spec.getConnections(), conditionBranches.keySet(), reduceNodes, isolationNodes,
                                   actionNodes, connectorNodes);
@@ -154,6 +153,7 @@ public class PipelinePlanner {
       addControlPhasesIfRequired(controlNodes, subdag, specs, phases);
     }
 
+    Set<String> processControlNodes = new HashSet<>();
     // build connections between phases
     Set<Connection> phaseConnections = new HashSet<>();
     for (Map.Entry<String, Dag> subdagEntry1 : subdags.entrySet()) {
@@ -171,23 +171,49 @@ public class PipelinePlanner {
         if (Sets.intersection(dag1.getSinks(), dag2.getSources()).size() > 0) {
           Set<String> controlAsSink = Sets.intersection(dag1.getSinks(), controlNodes);
           if (!controlAsSink.isEmpty()) {
-            // dag1 ends with condition
-            // here we need to add new phase corresponding to the destination condition
-            // also we need to add phase connections with either true or false from dag1 to dag2
-            if (controlAsSink.size() != 1) {
-              // sink should only have a single stage if its condition
-              throw new IllegalStateException(String.format("Dag '%s' to '%s' has control as well " +
-                                                              "as non-control stages in sink which is not " +
-                                                              "allowed.", dag1.getSources(), dag1.getSinks()));
-            }
             String controlNodeName = controlAsSink.iterator().next();
-            if (actionNodes.contains(controlNodeName)) {
-              createActionPhase(controlNodeName, specs.get(controlNodeName), controlNodes, dag1, dag1Name, dag2,
-                                dag2Name, phases, phaseConnections);
-            } else {
-              createConditionPhase(controlNodeName, specs.get(controlNodeName), conditionBranches, actionNodes,
-                                   dag1, dag1Name, dag2, dag2Name, phases, phaseConnections);
+
+            if (!controlNodes.containsAll(dag1.getNodes())) {
+              // dag1 does not only contain control nodes in it
+              phaseConnections.add(new Connection(dag1Name, controlNodeName));
             }
+
+            ConditionBranches branches = conditionBranches.get(controlNodeName);
+            if (branches != null) {
+              for (Boolean condition : Arrays.asList(true, false)) {
+                String stage = condition ? branches.getTrueOutput() : branches.getFalseOutput();
+                if (stage == null) {
+                  continue;
+                }
+
+                if (!dag2.getNodes().contains(stage)) {
+                  continue;
+                }
+
+                if (controlNodes.containsAll(dag2.getNodes())) {
+                  // dag 2 only contains condition stages. dag1 sink is same as dag 2 source condition node.
+                  // so we added condition phase corresponding to the dag1 sink. Now phase connection should be
+                  // added from newly created condition phase to the dag 2 sink condition, rather than using dag2name
+                  // here. The scenario here is n1-c1-c2-c3-n2. dag1 is <n1, c1> and dag 2 is <c1, c2>. We just created
+                  // c1 as new phase. since dag2 satisfies the above if condition (as it only contains conditions) we add
+                  // phase connection from c1->c2, rather than c1->c1.to.c2
+                  phaseConnections.add(new Connection(controlNodeName, dag2.getSinks().iterator().next(),
+                                                      condition));
+                } else {
+                  // scenario here is n1-c1-c2-n2. dag 1 is <c1, c2> and dag 2 is <c2, n2>. We just created condition phase
+                  // for c2 and the phase connection should be c2->c2.to.n2
+                  phaseConnections.add(new Connection(controlNodeName, dag2Name, condition));
+                }
+                break;
+              }
+            } else {
+              if (controlNodes.containsAll(dag2.getNodes())) {
+                phaseConnections.add(new Connection(controlNodeName, dag2.getSinks().iterator().next()));
+              } else {
+                phaseConnections.add(new Connection(controlNodeName, dag2Name));
+              }
+            }
+            processControlNodes.add(controlNodeName);
           } else {
             phaseConnections.add(new Connection(dag1Name, dag2Name));
           }
@@ -197,12 +223,43 @@ public class PipelinePlanner {
 
     Map<String, String> controlConnectors = getConnectorsAssociatedWithControlNodes(controlNodes, controlChildToParent);
     for (Map.Entry<String, Dag> dagEntry : subdags.entrySet()) {
-      // If dag only contains conditions then ignore it
-      if (conditionBranches.keySet().containsAll(dagEntry.getValue().getNodes())) {
+      // If dag only contains control nodes then ignore it
+      if (controlNodes.containsAll(dagEntry.getValue().getNodes())) {
         continue;
       }
-      Dag dag = getUpdatedDag(dagEntry.getValue(), controlConnectors);
-      phases.put(dagEntry.getKey(), dagToPipeline(dag, connectorNodes, specs, controlConnectors));
+
+      Dag dag = dagEntry.getValue();
+      if (controlNodes.containsAll(dag.getSources())) {
+        String source = dag.getSources().iterator().next();
+        if (!processControlNodes.contains(source)) {
+          // This control node is not processed yet, because it is first in the pipeline.
+          ConditionBranches branches = conditionBranches.get(source);
+          if (branches != null) {
+            // this is condition node
+            boolean condition = false;
+            if (branches.getTrueOutput() != null && dag.getNodes().contains(branches.getTrueOutput())) {
+              condition = true;
+            }
+            phaseConnections.add(new Connection(source, dagEntry.getKey(), condition));
+          } else {
+            phaseConnections.add(new Connection(source, dagEntry.getKey()));
+          }
+          processControlNodes.add(source);
+        }
+      }
+
+      if (controlNodes.containsAll(dag.getSinks())) {
+        String sink = dag.getSinks().iterator().next();
+        if (!processControlNodes.contains(sink)) {
+          // This control node is not processed yet, because it is last in the pipeline.
+          // Conditions cannot be last however action nodes can be
+          phaseConnections.add(new Connection(dagEntry.getKey(), sink));
+          processControlNodes.add(sink);
+        }
+      }
+
+      Dag updatedDag = getUpdatedDag(dagEntry.getValue(), controlConnectors);
+      phases.put(dagEntry.getKey(), dagToPipeline(updatedDag, connectorNodes, specs, controlConnectors));
     }
 
     return new PipelinePlan(phases, phaseConnections);
@@ -246,78 +303,6 @@ public class PipelinePlanner {
           .build();
         phases.put(controlNode, controlPhase);
       }
-    }
-  }
-
-  private void createActionPhase(String actionName, StageSpec actionStageSpec, Set<String> controlNodes, Dag dag1,
-                                 String dag1Name, Dag dag2, String dag2Name, Map<String, PipelinePhase> phases,
-                                 Set<Connection> phaseConnections) {
-    PipelinePhase.Builder phaseBuilder = PipelinePhase.builder(supportedPluginTypes);
-    PipelinePhase actionPhase = phaseBuilder
-      .addStage(actionStageSpec)
-      .build();
-
-    phases.put(actionName, actionPhase);
-
-    if (!controlNodes.containsAll(dag1.getNodes())) {
-      // dag1 does not only contain control nodes in it
-      phaseConnections.add(new Connection(dag1Name, actionName));
-    }
-
-    if (controlNodes.containsAll(dag2.getNodes())) {
-      phaseConnections.add(new Connection(actionName, dag2.getSinks().iterator().next()));
-    } else {
-      phaseConnections.add(new Connection(actionName, dag2Name));
-    }
-  }
-
-  /**
-   * This method is responsible for creating phases corresponding to the condition nodes. It also puts the phase
-   * connections with appropriate true or false tags.
-   */
-  private void createConditionPhase(String conditionName, StageSpec conditionStageSpec,
-                                    Map<String, ConditionBranches> conditionBranches, Set<String> actionNodes,
-                                    Dag dag1, String dag1Name, Dag dag2, String dag2Name,
-                                    Map<String, PipelinePhase> phases, Set<Connection> phaseConnections) {
-    Set<String> conditionNodes = conditionBranches.keySet();
-    Set<String> controlNodes = Sets.union(conditionNodes, actionNodes);
-    PipelinePhase.Builder phaseBuilder = PipelinePhase.builder(supportedPluginTypes);
-    PipelinePhase conditionPhase = phaseBuilder
-      .addStage(conditionStageSpec)
-      .build();
-    phases.put(conditionName, conditionPhase);
-
-    if (!controlNodes.containsAll(dag1.getNodes())) {
-      // dag1 does not only contain control nodes in it
-      phaseConnections.add(new Connection(dag1Name, conditionName));
-    }
-
-    ConditionBranches branches = conditionBranches.get(conditionName);
-    for (Boolean condition : Arrays.asList(true, false)) {
-      String stage = condition ? branches.getTrueOutput() : branches.getFalseOutput();
-      if (stage == null) {
-        continue;
-      }
-
-      if (!dag2.getNodes().contains(stage)) {
-        continue;
-      }
-
-      if (controlNodes.containsAll(dag2.getNodes())) {
-        // dag 2 only contains condition stages. dag1 sink is same as dag 2 source condition node.
-        // so we added condition phase corresponding to the dag1 sink. Now phase connection should be
-        // added from newly created condition phase to the dag 2 sink condition, rather than using dag2name
-        // here. The scenario here is n1-c1-c2-c3-n2. dag1 is <n1, c1> and dag 2 is <c1, c2>. We just created
-        // c1 as new phase. since dag2 satisfies the above if condition (as it only contains conditions) we add
-        // phase connection from c1->c2, rather than c1->c1.to.c2
-        phaseConnections.add(new Connection(conditionName, dag2.getSinks().iterator().next(),
-                                            condition));
-      } else {
-        // scenario here is n1-c1-c2-n2. dag 1 is <c1, c2> and dag 2 is <c2, n2>. We just created condition phase
-        // for c2 and the phase connection should be c2->c2.to.n2
-        phaseConnections.add(new Connection(conditionName, dag2Name, condition));
-      }
-      break;
     }
   }
 
