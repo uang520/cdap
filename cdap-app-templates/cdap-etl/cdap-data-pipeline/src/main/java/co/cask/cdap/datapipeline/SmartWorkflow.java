@@ -111,8 +111,8 @@ public class SmartWorkflow extends AbstractWorkflow {
     .registerTypeAdapter(Schema.class, new SchemaTypeAdapter())
     .registerTypeAdapter(TriggeringPipelinePropertyId.class, new TriggeringPipelinePropertyIdCodec())
     .create();
-  private static final Type PROPERTY_ID_STRING_MAP =
-    new TypeToken<Map<TriggeringPipelinePropertyId, String>>() { }.getType();
+  private static final Type STRING_STRING_MAP =
+    new TypeToken<Map<String, String>>() { }.getType();
 
   private final ApplicationConfigurer applicationConfigurer;
   private final Set<String> supportedPluginTypes;
@@ -261,7 +261,7 @@ public class SmartWorkflow extends AbstractWorkflow {
   }
 
   private Map<String, String> getNewRuntimeArgsFromScheduleInfo(TriggeringScheduleInfo scheduleInfo,
-                                                                Map<TriggeringPipelinePropertyId, String>
+                                                                Map<String, String>
                                                                   propertiesMap) {
     List<TriggerInfo> triggerInfoList = scheduleInfo.getTriggerInfos();
     List<ProgramStatusTriggerInfo> programStatusTriggerInfos = new ArrayList<>();
@@ -276,8 +276,9 @@ public class SmartWorkflow extends AbstractWorkflow {
       return newRuntimeArgs;
     }
     // Get the value of every triggering pipeline property and put it to newRuntimeArgs if it's not null
-    for (Map.Entry<TriggeringPipelinePropertyId, String> entry : propertiesMap.entrySet()) {
-      TriggeringPipelinePropertyId triggeringPropertyId = entry.getKey();
+    for (Map.Entry<String, String> entry : propertiesMap.entrySet()) {
+      TriggeringPipelinePropertyId triggeringPropertyId =
+        GSON.fromJson(entry.getKey(), TriggeringPipelinePropertyId.class);
       addTriggeringPipelineProperties(programStatusTriggerInfos, newRuntimeArgs,
                                       triggeringPropertyId, entry.getValue());
     }
@@ -346,8 +347,8 @@ public class SmartWorkflow extends AbstractWorkflow {
     if (scheduleInfo != null) {
       String propertiesMappingString = scheduleInfo.getProperties().get(TRIGGERING_PROPERTIES_MAPPING);
       if (propertiesMappingString != null) {
-        Map<TriggeringPipelinePropertyId, String> propertiesMap = GSON.fromJson(propertiesMappingString,
-                                                                                PROPERTY_ID_STRING_MAP);
+        Map<String, String> propertiesMap = GSON.fromJson(propertiesMappingString,
+                                                                                STRING_STRING_MAP);
         Map<String, String> newRuntimeArgs =
           getNewRuntimeArgsFromScheduleInfo(scheduleInfo, propertiesMap);
         for (Map.Entry<String, String> entry : newRuntimeArgs.entrySet()) {

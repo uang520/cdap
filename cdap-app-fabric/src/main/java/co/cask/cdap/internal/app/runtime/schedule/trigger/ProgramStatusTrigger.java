@@ -70,7 +70,8 @@ public class ProgramStatusTrigger extends ProtoTrigger.ProgramStatusTrigger impl
   }
 
   @Override
-  public List<TriggerInfo> getTriggerInfosAddArgumentOverrides(final TriggerInfoContext context, Map<String, String> sysArgs,
+  public List<TriggerInfo> getTriggerInfosAddArgumentOverrides(final TriggerInfoContext context,
+                                                               Map<String, String> sysArgs,
                                                                Map<String, String> userArgs) {
     Function<ProgramRunInfo, List<TriggerInfo>> function = new Function<ProgramRunInfo, List<TriggerInfo>>() {
       @Override

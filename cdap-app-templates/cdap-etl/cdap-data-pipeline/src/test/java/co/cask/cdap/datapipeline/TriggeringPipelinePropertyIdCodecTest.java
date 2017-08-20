@@ -17,9 +17,9 @@
 package co.cask.cdap.datapipeline;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -30,12 +30,12 @@ import java.util.Map;
  * Test serialization and deserialization of {@link TriggeringPipelinePropertyId} objects with
  * {@link TriggeringPipelinePropertyIdCodec}
  */
-public class TriggeringPipelinePropertyCodecTest {
+public class TriggeringPipelinePropertyIdCodecTest {
   private static final Gson GSON = new GsonBuilder()
     .registerTypeAdapter(TriggeringPipelinePropertyId.class, new TriggeringPipelinePropertyIdCodec())
     .create();
-  private static final Type PROPERTY_ID_STRING_MAP =
-    new TypeToken<Map<TriggeringPipelinePropertyId, String>>() { }.getType();
+  private static final Type STRING_STRING_MAP =
+    new TypeToken<Map<String, String>>() { }.getType();
   private static final String RUNTIME_ARG_V1 = "raV1";
   private static final String RUNTIME_ARG_V2 = "raV2";
   private static final String PLUGIN_PROPERTY_V1 = "ppV1";
@@ -64,9 +64,25 @@ public class TriggeringPipelinePropertyCodecTest {
       .put(tokenId1, TOKEN_V1)
       .put(tokenId2, TOKEN_V2)
       .build();
-    String propertiesMappingJson = GSON.toJson(expectedPropertiesMap);
-    Map<TriggeringPipelinePropertyId, String> propertiesMap = GSON.fromJson(propertiesMappingJson,
-                                                                            PROPERTY_ID_STRING_MAP);
-    Assert.assertEquals(expectedPropertiesMap, propertiesMap);
+
+    // Convert TriggeringPipelinePropertyId to JSON as keys and keep the corresponding value from expectedPropertiesMap
+    // as values
+    Map<String, String> propertiesMap =
+      ImmutableMap.<String, String>builder()
+        .put(GSON.toJson(runtimeArgId1), RUNTIME_ARG_V1)
+        .put(GSON.toJson(runtimeArgId2), RUNTIME_ARG_V2)
+        .put(GSON.toJson(pluginPropertyId1), PLUGIN_PROPERTY_V1)
+        .put(GSON.toJson(pluginPropertyId2), PLUGIN_PROPERTY_V2)
+        .put(GSON.toJson(tokenId1), TOKEN_V1)
+        .put(GSON.toJson(tokenId2), TOKEN_V2)
+        .build();
+    String propertiesMapJson = GSON.toJson(propertiesMap);
+    Map<String, String> deserializedPropertiesMap = GSON.fromJson(propertiesMapJson, STRING_STRING_MAP);
+    for (Map.Entry<String, String> entry : deserializedPropertiesMap.entrySet()) {
+      TriggeringPipelinePropertyId deserializedId = GSON.fromJson(entry.getKey(), TriggeringPipelinePropertyId.class);
+      // The value gotten from expectedPropertiesMap with the deserialized TriggeringPipelinePropertyId
+      // should be the same as the current value in deserialized propertiesMap
+      Assert.assertEquals(expectedPropertiesMap.get(deserializedId), entry.getValue());
+    }
   }
 }

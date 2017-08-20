@@ -16,6 +16,7 @@
 
 package co.cask.cdap.api.schedule;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -25,7 +26,7 @@ import java.util.Map;
 /**
  * The information of a schedule that can be used by the program launched by the schedule.
  */
-public class TriggeringScheduleInfo {
+public class TriggeringScheduleInfo implements Serializable {
 
   private final String name;
   private final String description;
