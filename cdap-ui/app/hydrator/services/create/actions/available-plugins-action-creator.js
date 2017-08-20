@@ -24,7 +24,7 @@ const getPluginToArtifactMap = (plugins = []) => {
 };
 
 const getDefaultVersionForPlugin = (plugin = {}, defaultVersionMap = {}) => {
-  if([Object.keys(plugin), Object.keys(defaultVersionMap)].indexOf(0) !== -1) {
+  if (Object.keys(plugin).length === 0 || Object.keys(defaultVersionMap).length === 0) {
     return {};
   }
   let defaultVersionsList = Object.keys(defaultVersionMap);
@@ -38,7 +38,7 @@ const getDefaultVersionForPlugin = (plugin = {}, defaultVersionMap = {}) => {
   return angular.copy(defaultVersionMap[key]);
 };
 
-let popoverTemplate = '/assets/features/hydrator/templates/create/popovers/leftpanel-plugin-popover.html';
+const popoverTemplate = '/assets/features/hydrator/templates/create/popovers/leftpanel-plugin-popover.html';
 
 class PipelineAvailablePluginsActions {
   constructor(myPipelineApi, GLOBALS, $q, AvailablePluginsStore, AVAILABLE_PLUGINS_ACTIONS, DAGPlusPlusFactory, $filter, myHelpers, LEFTPANELSTORE_ACTIONS, HydratorPlusPlusLeftPanelStore, mySettings) {
@@ -117,7 +117,10 @@ class PipelineAvailablePluginsActions {
       .$promise
       .then((res) => {
         res.forEach((plugin) => {
-          let pluginKey = Object.keys(plugin.properties)[0].split('.')[1];
+          let pluginProperties = Object.keys(plugin.properties);
+          if (pluginProperties.length === 0) { return; }
+
+          let pluginKey = pluginProperties[0].split('.')[1];
           let key = `${pluginKey}-${plugin.name}-${plugin.version}-${plugin.scope}`;
 
           availablePluginsMap[key].doc = plugin.properties[`doc.${pluginKey}`];

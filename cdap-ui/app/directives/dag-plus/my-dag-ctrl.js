@@ -865,8 +865,9 @@ angular.module(PKG.name + '.commons')
     // CUSTOM ICONS CONTROL
     function generatePluginMapKey(node) {
       let plugin = node.plugin;
+      let type = node.type || plugin.type;
 
-      return `${plugin.name}-${node.type}-${plugin.artifact.name}-${plugin.artifact.version}-${plugin.artifact.scope}`;
+      return `${plugin.name}-${type}-${plugin.artifact.name}-${plugin.artifact.version}-${plugin.artifact.scope}`;
     }
 
     vm.shouldShowCustomIcon = (node) => {
