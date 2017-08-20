@@ -20,7 +20,7 @@ import co.cask.cdap.api.ClientLocalizationContext;
 import co.cask.cdap.api.ProgramLifecycle;
 import co.cask.cdap.api.ProgramState;
 import co.cask.cdap.api.Resources;
-import co.cask.cdap.api.RuntimeContext;
+import co.cask.cdap.api.SchedulableRuntimeContext;
 import co.cask.cdap.api.ServiceDiscoverer;
 import co.cask.cdap.api.Transactional;
 import co.cask.cdap.api.annotation.Beta;
@@ -36,7 +36,7 @@ import co.cask.cdap.api.workflow.WorkflowInfoProvider;
  * {@link Spark} program in the {@link ProgramLifecycle#initialize} call.
  */
 @Beta
-public interface SparkClientContext extends RuntimeContext, DatasetContext, ClientLocalizationContext,
+public interface SparkClientContext extends SchedulableRuntimeContext, DatasetContext, ClientLocalizationContext,
   Transactional, ServiceDiscoverer, PluginContext, WorkflowInfoProvider, SecureStore, MessagingContext {
 
   /**

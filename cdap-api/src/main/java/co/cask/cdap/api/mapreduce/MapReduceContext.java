@@ -19,7 +19,7 @@ package co.cask.cdap.api.mapreduce;
 import co.cask.cdap.api.ClientLocalizationContext;
 import co.cask.cdap.api.ProgramState;
 import co.cask.cdap.api.Resources;
-import co.cask.cdap.api.RuntimeContext;
+import co.cask.cdap.api.SchedulableRuntimeContext;
 import co.cask.cdap.api.ServiceDiscoverer;
 import co.cask.cdap.api.Transactional;
 import co.cask.cdap.api.data.DatasetContext;
@@ -33,7 +33,7 @@ import co.cask.cdap.api.workflow.WorkflowInfoProvider;
 /**
  * MapReduce job execution context.
  */
-public interface MapReduceContext extends RuntimeContext, DatasetContext, ServiceDiscoverer, Transactional,
+public interface MapReduceContext extends SchedulableRuntimeContext, DatasetContext, ServiceDiscoverer, Transactional,
   PluginContext, ClientLocalizationContext, WorkflowInfoProvider, SecureStore, MessagingContext {
 
   /**

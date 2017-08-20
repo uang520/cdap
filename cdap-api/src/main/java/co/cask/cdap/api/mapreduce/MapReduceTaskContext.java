@@ -16,7 +16,7 @@
 
 package co.cask.cdap.api.mapreduce;
 
-import co.cask.cdap.api.RuntimeContext;
+import co.cask.cdap.api.SchedulableRuntimeContext;
 import co.cask.cdap.api.ServiceDiscoverer;
 import co.cask.cdap.api.TaskLocalizationContext;
 import co.cask.cdap.api.annotation.Beta;
@@ -39,7 +39,7 @@ import javax.annotation.Nullable;
  * @param <VALUEOUT> output value type
  */
 @Beta
-public interface MapReduceTaskContext<KEYOUT, VALUEOUT> extends RuntimeContext, DatasetContext,
+public interface MapReduceTaskContext<KEYOUT, VALUEOUT> extends SchedulableRuntimeContext, DatasetContext,
   ServiceDiscoverer, PluginContext, TaskLocalizationContext, SecureStore {
 
   /**

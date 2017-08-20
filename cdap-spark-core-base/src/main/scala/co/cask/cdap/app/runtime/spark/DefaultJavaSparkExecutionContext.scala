@@ -212,7 +212,7 @@ class DefaultJavaSparkExecutionContext(sec: SparkExecutionContext) extends JavaS
 
   override def getDataTracer(loggerName: String): DataTracer = sec.getDataTracer(loggerName)
 
-  override def getTriggeringScheduleInfo: TriggeringScheduleInfo = sec.getTriggeringScheduleInfo
+  override def getTriggeringScheduleInfo: TriggeringScheduleInfo = sec.getTriggeringScheduleInfo.getOrElse(null)
 
   @throws[IOException]
   override def listSecureData(namespace: String): util.Map[String, String] = {

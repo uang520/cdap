@@ -130,5 +130,5 @@ class SerializableSparkExecutionContext(val delegate: SparkExecutionContext) ext
 
   override def getDataTracer(loggerName: String): DataTracer = delegate.getDataTracer(loggerName)
 
-  override def getTriggeringScheduleInfo: TriggeringScheduleInfo = delegate.getTriggeringScheduleInfo
+  override def getTriggeringScheduleInfo: Option[TriggeringScheduleInfo] = delegate.getTriggeringScheduleInfo
 }

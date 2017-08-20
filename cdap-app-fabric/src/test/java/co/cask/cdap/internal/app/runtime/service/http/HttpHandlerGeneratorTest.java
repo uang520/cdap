@@ -764,12 +764,6 @@ public class HttpHandlerGeneratorTest {
       return new NoopDataTracerFactory().getDataTracer(null, dataTracerName);
     }
 
-    @Nullable
-    @Override
-    public TriggeringScheduleInfo getTriggeringScheduleInfo() {
-      return null;
-    }
-
     @Override
     public Map<String, String> listSecureData(String namespace) throws Exception {
       return null;

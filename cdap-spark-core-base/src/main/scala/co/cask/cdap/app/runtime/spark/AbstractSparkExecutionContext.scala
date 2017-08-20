@@ -364,7 +364,7 @@ abstract class AbstractSparkExecutionContext(sparkClassLoader: SparkClassLoader,
 
   override def getDataTracer(tracerName: String): DataTracer = new SparkDataTracer(runtimeContext, tracerName)
 
-  override def getTriggeringScheduleInfo: TriggeringScheduleInfo = runtimeContext.getTriggeringScheduleInfo
+  override def getTriggeringScheduleInfo: Option[TriggeringScheduleInfo] = Option(runtimeContext.getTriggeringScheduleInfo)
 
   /**
     * Returns a [[org.apache.spark.broadcast.Broadcast]] of [[java.net.URI]] for

@@ -18,7 +18,7 @@ package co.cask.cdap.internal.app.runtime;
 
 import co.cask.cdap.api.Admin;
 import co.cask.cdap.api.ProgramLifecycle;
-import co.cask.cdap.api.RuntimeContext;
+import co.cask.cdap.api.SchedulableRuntimeContext;
 import co.cask.cdap.api.Transactional;
 import co.cask.cdap.api.TxRunnable;
 import co.cask.cdap.api.annotation.TransactionControl;
@@ -82,10 +82,6 @@ import co.cask.cdap.internal.app.runtime.schedule.trigger.TriggerInfoCodec;
 import co.cask.cdap.internal.app.runtime.workflow.BasicWorkflowToken;
 import co.cask.cdap.messaging.MessagingService;
 import co.cask.cdap.proto.Notification;
-import co.cask.cdap.proto.WorkflowTokenDetail;
-import co.cask.cdap.proto.WorkflowTokenNodeDetail;
-import co.cask.cdap.proto.codec.WorkflowTokenDetailCodec;
-import co.cask.cdap.proto.codec.WorkflowTokenNodeDetailCodec;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.EntityId;
@@ -126,7 +122,8 @@ import javax.annotation.Nullable;
  * Base class for program runtime context
  */
 public abstract class AbstractContext extends AbstractServiceDiscoverer
-  implements SecureStore, LineageDatasetContext, Transactional, RuntimeContext, PluginContext, MessagingContext {
+  implements SecureStore, LineageDatasetContext, Transactional, SchedulableRuntimeContext,
+  PluginContext, MessagingContext {
 
   private static final Gson GSON = ApplicationSpecificationAdapter.addTypeAdapters(new GsonBuilder())
     .registerTypeAdapter(PartitionKey.class, new PartitionKeyCodec())
