@@ -493,6 +493,7 @@ public class AuthorizationTest extends TestBase {
       Assert.fail();
     } catch (Exception e) {
       // expected
+      e.getMessage();
     }
 
     // grant alice the required implicit type and module

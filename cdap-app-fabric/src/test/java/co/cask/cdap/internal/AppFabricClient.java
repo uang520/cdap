@@ -56,6 +56,7 @@ import co.cask.cdap.proto.id.KerberosPrincipalId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.ProgramRunId;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.http.BodyConsumer;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
@@ -447,8 +448,12 @@ public class AppFabricClient {
 
   private void verifyResponse(HttpResponseStatus expected, HttpResponseStatus actual, String errorMsg) {
     if (!expected.equals(actual)) {
-      throw new IllegalStateException(String.format("Expected %s, got %s. Error: %s",
-                                                    expected, actual, errorMsg));
+      String message = String.format("Expected %s, got %s. Error: %s", expected, actual, errorMsg);
+      if (actual.getCode() == HttpResponseStatus.FORBIDDEN.getCode()) {
+        UnauthorizedException cause = new UnauthorizedException(actual.getReasonPhrase());
+        throw new IllegalStateException(message, cause);
+      }
+      throw new IllegalStateException(message);
     }
   }
 

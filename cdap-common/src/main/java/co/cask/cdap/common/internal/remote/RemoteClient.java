@@ -20,6 +20,7 @@ import co.cask.cdap.common.ServiceUnavailableException;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.discovery.EndpointStrategy;
 import co.cask.cdap.common.discovery.RandomEndpointStrategy;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpRequestConfig;
@@ -92,6 +93,12 @@ public class RemoteClient {
       HttpResponse response = HttpRequests.execute(request, httpRequestConfig);
       if (response.getResponseCode() == HttpURLConnection.HTTP_UNAVAILABLE) {
         throw new ServiceUnavailableException(discoverableServiceName, response.getResponseBodyAsString());
+      }
+      if (response.getResponseCode() == HttpURLConnection.HTTP_FORBIDDEN) {
+        UnauthorizedException cause = new UnauthorizedException(response.getResponseBodyAsString());
+        // We wrap the UnauthorizedException inside an IOException so that we don't have to change the interface
+        // of all APIs.
+        throw new IOException(cause.getMessage(), cause);
       }
       return response;
     } catch (ConnectException e) {
