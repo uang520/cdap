@@ -413,7 +413,7 @@ public class PipelinePlanner {
   static Set<Dag> split(Set<Connection> connections, Set<String> conditions, Set<String> reduceNodes,
                         Set<String> isolationNodes, Set<String> actionNodes, Map<String, String> connectorNodes) {
     Dag dag = new Dag(connections);
-    Set<Dag> subdags = dag.splitByControlNodes(conditions);
+    Set<Dag> subdags = dag.splitByControlNodes(Sets.union(conditions, actionNodes));
 
     Set<Dag> result = new HashSet<>();
     for (Dag subdag : subdags) {
