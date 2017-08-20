@@ -22,6 +22,8 @@ import com.google.common.collect.ImmutableSet;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -515,5 +517,52 @@ public class DagTest {
       new Connection("n7", "n8")));
     actual = fulldag.subsetFrom("n2", ImmutableSet.of("n4", "n8", "n1"));
     Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testSplitByControlNodes() throws Exception {
+    // c1 --> a1 --> n1 --> n2
+    //  |
+    //  | --> n3 --> n4 --> a2
+
+
+    Dag dag = new Dag(ImmutableSet.of(
+      new Connection("c1", "a1"),
+      new Connection("a1", "n1"),
+      new Connection("n1", "n2"),
+      new Connection("c1", "n3"),
+      new Connection("n3", "n4"),
+      new Connection("n4", "a2")));
+
+    Dag dag2 = new Dag(ImmutableSet.of(
+      new Connection("c1", "a1"),
+      new Connection("a1", "a2"),
+      new Connection("c1", "a3")));
+
+    // a1 - a2 - c1 - n0
+    //      |
+    // a0 --
+    Dag dag3 = new Dag(ImmutableSet.of(
+      new Connection("a0", "a2"),
+      new Connection("a1", "a2"),
+      new Connection("a2", "c1"),
+      new Connection("c1", "n0")));
+
+    // TODO is this dag allowed?
+    // a1 - a2 - c1 - n0
+    //            |
+    // f0 -----
+
+    // TODO
+    // a1 - file - c1 - n0
+    //      |
+    // a0 --
+    Dag dag4 = new Dag(ImmutableSet.of(
+      new Connection("a0", "file"),
+      new Connection("a1", "file"),
+      new Connection("file", "c1"),
+      new Connection("c1", "n0")));
+
+    Set<Dag> dags = dag4.splitByControlNodes(new HashSet<>(Arrays.asList("a0", "c1", "a1", "a2")));
   }
 }

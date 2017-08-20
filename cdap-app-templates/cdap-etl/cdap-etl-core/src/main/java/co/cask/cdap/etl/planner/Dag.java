@@ -138,10 +138,10 @@ public class Dag {
 
   /**
    * Split the dag based on the input condition nodes.
-   * @param conditionNodes set of conditions based on which to split the Dag
+   * @param controlNodes set of conditions and actions based on which to split the Dag
    * @return set of splitted dags
    */
-  public Set<Dag> splitByConditions(Set<String> conditionNodes) {
+  public Set<Dag> splitByControlNodes(Set<String> controlNodes) {
 
     /*
       Consider the following example, where c1, c2, and c3 are conditions:
@@ -163,21 +163,23 @@ public class Dag {
      */
 
     Set<Dag> dags = new HashSet<>();
-    Set<String> childStopperNodes = Sets.union(sinks, conditionNodes);
-
-    dags.add(createSubDag(accessibleFrom(sources, childStopperNodes)));
-    for (String condition : conditionNodes) {
+    Set<String> childStopperNodes = Sets.union(sinks, controlNodes);
+    Set<String> accessibleFromSources = accessibleFrom(sources, childStopperNodes);
+    if (!controlNodes.containsAll(sources)) {
+      dags.add(createSubDag(accessibleFromSources));
+    }
+    for (String controlNode : controlNodes) {
       // For child we need to add two sub-dags corresponding to the true and false branch
       // Condition node has at least one and at max two output nodes
-      Set<String> outputs = getNodeOutputs(condition);
+      Set<String> outputs = getNodeOutputs(controlNode);
       for (String output : outputs) {
-        if (conditionNodes.contains(output)) {
+        if (controlNodes.contains(output)) {
           // condition is attached to the condition so just return that path
-          dags.add(createSubDag(new HashSet<>(Arrays.asList(condition, output))));
+          dags.add(createSubDag(new HashSet<>(Arrays.asList(controlNode, output))));
           continue;
         }
         Set<String> childNodes = accessibleFrom(output, childStopperNodes);
-        childNodes.add(condition);
+        childNodes.add(controlNode);
         dags.add(createSubDag(childNodes));
       }
     }
