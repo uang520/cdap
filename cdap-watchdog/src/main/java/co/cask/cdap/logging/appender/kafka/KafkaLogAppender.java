@@ -44,7 +44,7 @@ import java.util.concurrent.TimeUnit;
  */
 public final class KafkaLogAppender extends LogAppender {
 
-  private static final int QUEUE_SIZE = 512;
+  private static final int QUEUE_SIZE = 10;
 
   private static final String APPENDER_NAME = "KafkaLogAppender";
 

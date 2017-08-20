@@ -86,11 +86,15 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.Closeables;
 import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.Service;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.FileContext;
@@ -100,7 +104,10 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.security.AccessControlException;
+import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.twill.api.Configs;
@@ -137,6 +144,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -144,9 +152,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import javax.annotation.Nullable;
@@ -608,6 +619,71 @@ public class MasterServiceMain extends DaemonMain {
       this.services = new ArrayList<>();
     }
 
+    private final class MyObj {
+      public final Log log = LogFactory.getLog(Token.class);
+
+      @Override
+      public String toString() {
+        for (int i = 0; i < 100; i++) {
+          log.error("Some recursive logging");
+        }
+        return "MyObj";
+      }
+    }
+
+    private final class LoggingRunnable implements Runnable {
+      private final Logger log = LoggerFactory.getLogger(LoggingRunnable.class);
+
+      private Object hiveToken;
+
+      LoggingRunnable(Token hiveToken) {
+        this.hiveToken = hiveToken;
+      }
+
+      @Override
+      public void run() {
+        hiveToken = new MyObj();
+//        for (int i = 0; i < 100; i++) {
+        log.info("Printing myObj: {}", hiveToken);
+//        }
+      }
+    }
+
+    private Token getHiveToken(Credentials credentials) {
+      for (Token tokenIdentifier : credentials.getAllTokens()) {
+        if ("HIVE_DELEGATION_TOKEN".equals(tokenIdentifier.getKind().toString())) {
+          return tokenIdentifier;
+        }
+      }
+      throw new IllegalArgumentException();
+    }
+
+    private void runMyShit(TokenSecureStoreRenewer secureStoreRenewer) {
+      int numThreads = cConf.getInt("num.threads", 100);
+      LOG.info("Running with numThreads={}", numThreads);
+      List<ListenableFuture<?>> threads = new ArrayList<>(numThreads);
+      ListeningExecutorService executorService =
+        MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(numThreads));
+
+      Credentials credentials = secureStoreRenewer.createCredentials();
+
+      for (int i = 0; i < 1000; i++) {
+        LOG.info("filling up buffer");
+      }
+      for (int i = 0; i < numThreads; i++) {
+        threads.add(executorService.submit(new LoggingRunnable(getHiveToken(credentials))));
+      }
+      try {
+        Futures.allAsList(threads).get(1, TimeUnit.MINUTES);
+      } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        throw Throwables.propagate(e);
+      }
+
+      if (Math.random() < 1) {
+        throw new RuntimeException("Successfully logged. No deadlock.");
+      }
+    }
+
     @Override
     public void leader() {
       LOG.info("Became leader for master services");
@@ -640,6 +716,8 @@ public class MasterServiceMain extends DaemonMain {
                                                                          30000L,
                                                                          TimeUnit.MILLISECONDS);
       }
+
+      runMyShit(secureStoreRenewer);
 
       // Create app-fabric and dataset services
       services.add(new RetryOnStartFailureService(new Supplier<Service>() {
