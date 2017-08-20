@@ -103,7 +103,7 @@ public final class ScheduleTaskRunner {
                                                            Map<String, String> userArgs) {
     TriggerInfoContext triggerInfoContext = new TriggerInfoContext(job, store);
     SatisfiableTrigger trigger = ((SatisfiableTrigger) job.getSchedule().getTrigger());
-    TriggerInfo triggerInfo = trigger.getTriggerInfoAddArgumentOverrides(triggerInfoContext, systemArgs, userArgs);
+    TriggerInfo triggerInfo = trigger.getTriggerInfosAddArgumentOverrides(triggerInfoContext, systemArgs, userArgs);
     return new TriggeringScheduleInfo(schedule.getName(), schedule.getDescription(),
                                       triggerInfo, schedule.getProperties());
   }

@@ -16,7 +16,6 @@
 
 package co.cask.cdap.internal.app.runtime.schedule.trigger;
 
-import co.cask.cdap.api.schedule.OrTriggerInfo;
 import co.cask.cdap.api.schedule.Trigger;
 import co.cask.cdap.api.schedule.TriggerInfo;
 import co.cask.cdap.proto.Notification;
@@ -44,8 +43,8 @@ public class OrTrigger extends AbstractCompositeTrigger implements SatisfiableTr
   }
 
   @Override
-  public TriggerInfo getTriggerInfoAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
-                                                        Map<String, String> userArgs) {
-    return new OrTriggerInfo(getUnitTriggerInfosAddRuntimeArgs(context, sysArgs, userArgs));
+  public List<TriggerInfo> getTriggerInfosAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
+                                                               Map<String, String> userArgs) {
+    return getUnitTriggerInfosAddRuntimeArgs(context, sysArgs, userArgs);
   }
 }

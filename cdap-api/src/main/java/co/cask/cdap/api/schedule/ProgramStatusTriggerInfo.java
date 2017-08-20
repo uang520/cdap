@@ -21,6 +21,9 @@ import co.cask.cdap.api.app.ApplicationSpecification;
 import co.cask.cdap.api.app.ProgramType;
 import co.cask.cdap.api.workflow.WorkflowToken;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nullable;
@@ -35,30 +38,27 @@ public class ProgramStatusTriggerInfo extends TriggerInfo {
   private final ProgramType programType;
   private final String program;
   private final Set<ProgramStatus> triggerStatues;
-  @Nullable
   private final String runId;
-  @Nullable
   private final ProgramStatus programStatus;
   @Nullable
   private final WorkflowToken workflowToken;
-  @Nullable
   private final Map<String, String> runtimeArguments;
 
   public ProgramStatusTriggerInfo(String namespace, ApplicationSpecification applicationSpecification,
                                   ProgramType programType, String program, Set<ProgramStatus> triggerStatues,
-                                  @Nullable String runId, @Nullable ProgramStatus programStatus,
+                                  String runId, ProgramStatus programStatus,
                                   @Nullable WorkflowToken workflowToken,
-                                  @Nullable Map<String, String> runtimeArguments) {
+                                  Map<String, String> runtimeArguments) {
     super(Trigger.Type.PROGRAM_STATUS);
     this.namespace = namespace;
     this.applicationSpecification = applicationSpecification;
     this.programType = programType;
     this.program = program;
-    this.triggerStatues = triggerStatues;
+    this.triggerStatues = Collections.unmodifiableSet(new HashSet<>(triggerStatues));
     this.runId = runId;
     this.programStatus = programStatus;
     this.workflowToken = workflowToken;
-    this.runtimeArguments = runtimeArguments;
+    this.runtimeArguments = Collections.unmodifiableMap(new HashMap<>(runtimeArguments));
   }
 
   /**
@@ -90,34 +90,28 @@ public class ProgramStatusTriggerInfo extends TriggerInfo {
   }
 
   /**
-   * @return All the program statuses that can satisfy the program status trigger.
+   * @return An immutable set of all the program statuses that can satisfy the program status trigger.
    */
   public Set<ProgramStatus> getTriggerStatues() {
     return triggerStatues;
   }
 
   /**
-   * @return The program run Id of the triggering program run that can satisfy the program status trigger,
-   *         or {@code null} if there is no such run.
+   * @return The program run Id of the triggering program run that can satisfy the program status trigger.
    */
-  @Nullable
   public String getRunId() {
     return runId;
   }
 
   /**
-   * @return The program status of the triggering program run that can satisfy the program status trigger,
-   *         or {@code null} if there is no such run.
+   * @return The program status of the triggering program run that can satisfy the program status trigger.
    */
-  @Nullable
   public ProgramStatus getProgramStatus() {
     return programStatus;
   }
 
   /**
-   * @return The workflow token if the program is a workflow with a run that can
-   *         satisfy the program status trigger, or an empty workflow token if there's no such run.
-   *         Return {@code null} if the program is not a workflow.
+   * @return The workflow token if the program is a workflow, or {@code null} otherwise.
    */
   @Nullable
   public WorkflowToken getWorkflowToken() {
@@ -125,10 +119,9 @@ public class ProgramStatusTriggerInfo extends TriggerInfo {
   }
 
   /**
-   * @return The runtime arguments of the triggering program run that can satisfy the program status trigger,
-   *         or {@code null} if there is no such run.
+   * @return An immutable map of the runtime arguments of the triggering program run that can
+   *         satisfy the program status trigger.
    */
-  @Nullable
   public Map<String, String> getRuntimeArguments() {
     return runtimeArguments;
   }

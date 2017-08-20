@@ -52,8 +52,11 @@ public interface SatisfiableTrigger extends Trigger {
    * @param context the {@link TriggerInfoContext} that provides necessary information to build the {@link TriggerInfo}
    * @param sysArgs system runtime arguments to override with appropriate notification properties
    * @param userArgs user runtime arguments to override with appropriate notification properties
-   * @return {@link TriggerInfo} of this trigger
+   * @return An immutable list of {@link TriggerInfo}'s of this trigger. If the trigger is not
+   *         composite trigger, the list only contains one trigger info for this trigger.
+   *         If the trigger is a composite trigger, the list will contain all the satisfied non-composite triggers
+   *         in the composite trigger.
    */
-  TriggerInfo getTriggerInfoAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
-                                                 Map<String, String> userArgs);
+  List<TriggerInfo> getTriggerInfosAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
+                                                        Map<String, String> userArgs);
 }

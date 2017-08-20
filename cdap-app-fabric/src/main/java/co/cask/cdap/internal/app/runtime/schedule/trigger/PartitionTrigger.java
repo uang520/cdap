@@ -23,6 +23,7 @@ import co.cask.cdap.internal.app.runtime.schedule.store.Schedulers;
 import co.cask.cdap.proto.Notification;
 import co.cask.cdap.proto.ProtoTrigger;
 import co.cask.cdap.proto.id.DatasetId;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 import java.util.List;
@@ -67,9 +68,11 @@ public class PartitionTrigger extends ProtoTrigger.PartitionTrigger implements S
   }
 
   @Override
-  public TriggerInfo getTriggerInfoAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
-                                                        Map<String, String> userArgs) {
-    return new PartitionTriggerInfo(dataset.getNamespace(), dataset.getDataset(), numPartitions,
-                                    getPartitionsCount(context.getNotifications()));
+  public List<TriggerInfo> getTriggerInfosAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
+                                                               Map<String, String> userArgs) {
+
+    TriggerInfo triggerInfo = new PartitionTriggerInfo(dataset.getNamespace(), dataset.getDataset(), numPartitions,
+                                                       getPartitionsCount(context.getNotifications()));
+    return ImmutableList.of(triggerInfo);
   }
 }

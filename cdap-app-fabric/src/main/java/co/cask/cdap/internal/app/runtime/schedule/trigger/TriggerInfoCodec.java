@@ -32,8 +32,6 @@ package co.cask.cdap.internal.app.runtime.schedule.trigger;
  * the License.
  */
 
-import co.cask.cdap.api.schedule.AndTriggerInfo;
-import co.cask.cdap.api.schedule.OrTriggerInfo;
 import co.cask.cdap.api.schedule.PartitionTriggerInfo;
 import co.cask.cdap.api.schedule.ProgramStatusTriggerInfo;
 import co.cask.cdap.api.schedule.StreamSizeTriggerInfo;
@@ -60,7 +58,7 @@ public class TriggerInfoCodec implements JsonSerializer<TriggerInfo>, JsonDeseri
   /**
    * Maps each type to a class for deserialization.
    */
-  private static final Map<Trigger.Type, Class<? extends TriggerInfo>> TYPE_TO_TRIGGER = generateMap();
+  private static final Map<Trigger.Type, Class<? extends TriggerInfo>> TYPE_TO_TRIGGER_INFO = generateMap();
 
   private static Map<Trigger.Type, Class<? extends TriggerInfo>> generateMap() {
     Map<Trigger.Type, Class<? extends TriggerInfo>> map = new HashMap<>();
@@ -68,8 +66,6 @@ public class TriggerInfoCodec implements JsonSerializer<TriggerInfo>, JsonDeseri
     map.put(Trigger.Type.PARTITION, PartitionTriggerInfo.class);
     map.put(Trigger.Type.STREAM_SIZE, StreamSizeTriggerInfo.class);
     map.put(Trigger.Type.PROGRAM_STATUS, ProgramStatusTriggerInfo.class);
-    map.put(Trigger.Type.AND, AndTriggerInfo.class);
-    map.put(Trigger.Type.OR, OrTriggerInfo.class);
     return map;
   }
 
@@ -79,14 +75,14 @@ public class TriggerInfoCodec implements JsonSerializer<TriggerInfo>, JsonDeseri
   private final Map<Trigger.Type, Class<? extends TriggerInfo>> typeClassMap;
 
   /**
-   * Constructs a Codec with the default mapping from trigger type to trigger class.
+   * Constructs a Codec with the default mapping from trigger type to trigger info class.
    */
   public TriggerInfoCodec() {
-    this(TYPE_TO_TRIGGER);
+    this(TYPE_TO_TRIGGER_INFO);
   }
 
   /**
-   * Constructs a Codec with a custom mapping from trigger type to trigger class.
+   * Constructs a Codec with a custom mapping from trigger type to trigger info class.
    */
   protected TriggerInfoCodec(Map<Trigger.Type, Class<? extends TriggerInfo>> typeClassMap) {
     this.typeClassMap = typeClassMap;
@@ -94,7 +90,6 @@ public class TriggerInfoCodec implements JsonSerializer<TriggerInfo>, JsonDeseri
 
   @Override
   public JsonElement serialize(TriggerInfo src, Type typeOfSrc, JsonSerializationContext context) {
-    // this assumes that Trigger is an abstract class (every instance will have a concrete type that's not Trigger)
     return context.serialize(src, src.getClass());
   }
 

@@ -16,17 +16,14 @@
 
 package co.cask.cdap.api.schedule;
 
-import javax.annotation.Nullable;
-
 /**
  * The time trigger information to be passed to the triggered program.
  */
 public class TimeTriggerInfo extends TriggerInfo {
   private final String cronExpression;
-  @Nullable
-  private final String logicalStartTime;
+  private final long logicalStartTime;
 
-  public TimeTriggerInfo(String cronExpression, @Nullable String logicalStartTime) {
+  public TimeTriggerInfo(String cronExpression, long logicalStartTime) {
     super(Trigger.Type.TIME);
     this.cronExpression = cronExpression;
     this.logicalStartTime = logicalStartTime;
@@ -43,11 +40,9 @@ public class TimeTriggerInfo extends TriggerInfo {
    * Returns the logical start time of the triggered program. Logical start time is when the schedule decides to launch
    * the program when the cron expression is satisfied.
    *
-   * @return A String of time in milliseconds since epoch time (00:00:00 January 1, 1970 UTC),
-   *         or {@code null} if logical start time is not found.
+   * @return Time in milliseconds since epoch time (00:00:00 January 1, 1970 UTC)
    */
-  @Nullable
-  String getLogicalStartTime() {
+  long getLogicalStartTime() {
     return logicalStartTime;
   }
 }

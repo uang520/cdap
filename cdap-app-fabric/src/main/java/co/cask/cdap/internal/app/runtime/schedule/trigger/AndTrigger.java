@@ -16,7 +16,6 @@
 
 package co.cask.cdap.internal.app.runtime.schedule.trigger;
 
-import co.cask.cdap.api.schedule.AndTriggerInfo;
 import co.cask.cdap.api.schedule.Trigger;
 import co.cask.cdap.api.schedule.TriggerInfo;
 import co.cask.cdap.proto.Notification;
@@ -44,8 +43,8 @@ public class AndTrigger extends AbstractCompositeTrigger implements SatisfiableT
   }
 
   @Override
-  public TriggerInfo getTriggerInfoAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
-                                                        Map<String, String> userArgs) {
-    return new AndTriggerInfo(getUnitTriggerInfosAddRuntimeArgs(context, sysArgs, userArgs));
+  public List<TriggerInfo> getTriggerInfosAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
+                                                               Map<String, String> userArgs) {
+    return getUnitTriggerInfosAddRuntimeArgs(context, sysArgs, userArgs);
   }
 }

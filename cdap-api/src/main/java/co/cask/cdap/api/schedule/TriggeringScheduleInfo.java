@@ -16,6 +16,7 @@
 
 package co.cask.cdap.api.schedule;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -25,15 +26,15 @@ public class TriggeringScheduleInfo {
 
   private final String name;
   private final String description;
-  private final TriggerInfo triggerInfo;
+  private final List<TriggerInfo> triggerInfos;
   private final Map<String, String> properties;
 
-  public TriggeringScheduleInfo(String name, String description, TriggerInfo triggerInfo,
+  public TriggeringScheduleInfo(String name, String description, List<TriggerInfo> triggerInfos,
                                 Map<String, String> properties) {
     this.name = name;
     this.description = description;
     this.properties = properties;
-    this.triggerInfo = triggerInfo;
+    this.triggerInfos = triggerInfos;
   }
 
   /**
@@ -51,10 +52,13 @@ public class TriggeringScheduleInfo {
   }
 
   /**
-   * @return Information of the trigger contained in this schedule.
+   * @return An immutable list of trigger information contained in this schedule. If the trigger is not
+   *         composite trigger, the list only contains one trigger info for this trigger.
+   *         If the trigger is a composite trigger, the list will contain all the non-composite triggers
+   *         in the composite trigger.
    */
-  public TriggerInfo getTriggerInfo() {
-    return triggerInfo;
+  public List<TriggerInfo> getTriggerInfos() {
+    return triggerInfos;
   }
 
   /**

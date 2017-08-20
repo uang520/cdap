@@ -20,7 +20,6 @@ import co.cask.cdap.api.ProgramStatus;
 import co.cask.cdap.api.app.AbstractApplication;
 import co.cask.cdap.api.app.ProgramType;
 import co.cask.cdap.api.customaction.AbstractCustomAction;
-import co.cask.cdap.api.schedule.AbstractCompositeTriggerInfo;
 import co.cask.cdap.api.schedule.ProgramStatusTriggerInfo;
 import co.cask.cdap.api.schedule.TriggerInfo;
 import co.cask.cdap.api.schedule.TriggeringScheduleInfo;
@@ -28,7 +27,6 @@ import co.cask.cdap.api.workflow.AbstractWorkflow;
 import co.cask.cdap.api.workflow.Value;
 import co.cask.cdap.api.workflow.WorkflowContext;
 import co.cask.cdap.api.workflow.WorkflowToken;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -189,9 +187,7 @@ public class AppWithMultipleSchedules extends AbstractApplication {
 
   private static Map<String, String> getNewTokensFromScheduleInfo(TriggeringScheduleInfo scheduleInfo,
                                                                   Map<String, String> propertiesMap) {
-    TriggerInfo triggerInfo = scheduleInfo.getTriggerInfo();
-    List<TriggerInfo> triggerInfoList = triggerInfo instanceof AbstractCompositeTriggerInfo ?
-      ((AbstractCompositeTriggerInfo) triggerInfo).getUnitTriggerInfos() : ImmutableList.of(triggerInfo);
+    List<TriggerInfo> triggerInfoList = scheduleInfo.getTriggerInfos();
     List<ProgramStatusTriggerInfo> programStatusTriggerInfos = new ArrayList<>();
     for (TriggerInfo info : triggerInfoList) {
       if (info instanceof ProgramStatusTriggerInfo) {

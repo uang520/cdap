@@ -29,6 +29,7 @@ import co.cask.cdap.proto.ProtoTrigger;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.ProgramRunId;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 
 import java.util.Arrays;
@@ -86,8 +87,8 @@ public class ProgramStatusTrigger extends ProtoTrigger.ProgramStatusTrigger impl
   }
 
   @Override
-  public TriggerInfo getTriggerInfoAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
-                                                        Map<String, String> userArgs) {
+  public List<TriggerInfo> getTriggerInfosAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
+                                                               Map<String, String> userArgs) {
     for (Notification notification : context.getNotifications()) {
       if (!Notification.Type.PROGRAM_STATUS.equals(notification.getNotificationType())) {
         continue;
@@ -109,17 +110,16 @@ public class ProgramStatusTrigger extends ProtoTrigger.ProgramStatusTrigger impl
       ProgramId triggeringProgramId = programRunId.getParent();
 
       if (this.programId.equals(triggeringProgramId) && programStatuses.contains(programStatus)) {
-        return new ProgramStatusTriggerInfo(programId.getNamespace(),
-                                            context.getApplicationSpecification(programId.getParent()),
-                                            ProgramType.valueOf(programId.getType().name()), programId.getProgram(),
-                                            programStatuses, programRunId.getRun(), programStatus,
-                                            context.getWorkflowToken(programId, programRunId.getRun()),
-                                            context.getProgramRuntimeArguments(programId, programRunId.getRun()));
+        TriggerInfo triggerInfo =
+          new ProgramStatusTriggerInfo(programId.getNamespace(),
+                                       context.getApplicationSpecification(programId.getParent()),
+                                       ProgramType.valueOf(programId.getType().name()), programId.getProgram(),
+                                       programStatuses, programRunId.getRun(), programStatus,
+                                       context.getWorkflowToken(programId, programRunId.getRun()),
+                                       context.getProgramRuntimeArguments(programId, programRunId.getRun()));
+        return ImmutableList.of(triggerInfo);
       }
     }
-    return new ProgramStatusTriggerInfo(programId.getNamespace(),
-                                        context.getApplicationSpecification(programId.getParent()),
-                                        ProgramType.valueOf(programId.getType().name()), programId.getProgram(),
-                                        programStatuses, null, null, null, null);
+    return ImmutableList.of();
   }
 }

@@ -19,7 +19,6 @@ package co.cask.cdap.internal.app.runtime.schedule.trigger;
 import co.cask.cdap.api.app.ApplicationSpecification;
 import co.cask.cdap.api.workflow.WorkflowToken;
 import co.cask.cdap.app.store.Store;
-import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
 import co.cask.cdap.internal.app.runtime.schedule.ProgramSchedule;
 import co.cask.cdap.internal.app.runtime.schedule.queue.Job;
 import co.cask.cdap.internal.app.store.RunRecordMeta;
@@ -28,10 +27,7 @@ import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.WorkflowId;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
-import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
@@ -41,9 +37,6 @@ import javax.annotation.Nullable;
  * {@link co.cask.cdap.api.schedule.TriggerInfo} for a trigger.
  */
 public class TriggerInfoContext {
-  private static final Gson GSON = new Gson();
-  private static final Type MAP_STRING_STRING_TYPE = new TypeToken<Map<String, String>>() { }.getType();
-
   private final Job job;
   private final Store store;
 
@@ -82,7 +75,7 @@ public class TriggerInfoContext {
   }
 
   /**
-   * Fetches the run time arguments in a run record for particular run of a program.
+   * Fetches the run time arguments in a run record for a particular run of a program.
    *
    * @param programId id of the program
    * @param runId run id of the program
@@ -94,7 +87,6 @@ public class TriggerInfoContext {
     if (runRecordMeta == null) {
       return null;
     }
-    return GSON.fromJson(runRecordMeta.getProperties().get(ProgramOptionConstants.RUNTIME_ARGS),
-                         MAP_STRING_STRING_TYPE);
+    return runRecordMeta.getProperties();
   }
 }

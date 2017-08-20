@@ -17,10 +17,12 @@
 package co.cask.cdap.internal.app.runtime.schedule.trigger;
 
 import co.cask.cdap.api.schedule.TimeTriggerInfo;
+import co.cask.cdap.api.schedule.TriggerInfo;
 import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
 import co.cask.cdap.internal.app.runtime.schedule.store.Schedulers;
 import co.cask.cdap.proto.Notification;
 import co.cask.cdap.proto.ProtoTrigger;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -70,15 +72,15 @@ public class TimeTrigger extends ProtoTrigger.TimeTrigger implements Satisfiable
   }
 
   @Override
-  public TimeTriggerInfo getTriggerInfoAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
-                                                            Map<String, String> userArgs) {
+  public List<TriggerInfo> getTriggerInfosAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
+                                                               Map<String, String> userArgs) {
     boolean isTimeTrigger = context.getSchedule().getTrigger() instanceof TimeTrigger;
     for (Notification notification : context.getNotifications()) {
       if (!notification.getNotificationType().equals(Notification.Type.TIME)) {
         if (isTimeTrigger) {
           LOG.warn("The notification '{}' in the job of schedule '{}' is expected with type '{}' but it is not.",
                    notification, context.getSchedule(), Notification.Type.TIME.name());
-          return new TimeTriggerInfo(cronExpression, null);
+          return ImmutableList.of();
         }
         continue;
       }
@@ -89,7 +91,7 @@ public class TimeTrigger extends ProtoTrigger.TimeTrigger implements Satisfiable
           LOG.warn("The notification '{}' in the job of schedule '{}' does not contain property '{}' or '{}'.",
                    notification, context.getSchedule(),
                    ProgramOptionConstants.SYSTEM_OVERRIDES, ProgramOptionConstants.USER_OVERRIDES);
-          return new TimeTriggerInfo(cronExpression, null);
+          return ImmutableList.of();
         }
         continue;
       }
@@ -105,11 +107,11 @@ public class TimeTrigger extends ProtoTrigger.TimeTrigger implements Satisfiable
         sysArgs.putAll(systemOverrides);
         userArgs.putAll(userOverrides);
         String logicalStartTime = userOverrides.get(ProgramOptionConstants.LOGICAL_START_TIME);
-        return new TimeTriggerInfo(cronExpression, logicalStartTime);
+        return ImmutableList.<TriggerInfo>of(new TimeTriggerInfo(cronExpression, Long.valueOf(logicalStartTime)));
       }
     }
-    LOG.debug("No logical start time found from notifications {} for TimeTrigger with cron expression '{}' " +
+    LOG.trace("No logical start time found from notifications {} for TimeTrigger with cron expression '{}' " +
                 "in schedule '{}'", context.getNotifications(), cronExpression, context.getSchedule());
-    return new TimeTriggerInfo(cronExpression, null);
+    return ImmutableList.of();
   }
 }

@@ -22,6 +22,7 @@ import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
 import co.cask.cdap.proto.Notification;
 import co.cask.cdap.proto.ProtoTrigger;
 import co.cask.cdap.proto.id.StreamId;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -55,8 +56,8 @@ public class StreamSizeTrigger extends ProtoTrigger.StreamSizeTrigger implements
   }
 
   @Override
-  public TriggerInfo getTriggerInfoAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
-                                                        Map<String, String> userArgs) {
+  public List<TriggerInfo> getTriggerInfosAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
+                                                               Map<String, String> userArgs) {
     Notification notification = context.getNotifications().get(0);
     String systemOverridesString = notification.getProperties().get(ProgramOptionConstants.SYSTEM_OVERRIDES);
     String userOverridesString = notification.getProperties().get(ProgramOptionConstants.USER_OVERRIDES);
@@ -74,6 +75,7 @@ public class StreamSizeTrigger extends ProtoTrigger.StreamSizeTrigger implements
       LOG.warn("Notification '{}' should contain property '{}' but does not.", notification,
                ProgramOptionConstants.USER_OVERRIDES);
     }
-    return new StreamSizeTriggerInfo(streamId.getNamespace(), streamId.getStream(), triggerMB);
+    TriggerInfo triggerInfo = new StreamSizeTriggerInfo(streamId.getNamespace(), streamId.getStream(), triggerMB);
+    return ImmutableList.of(triggerInfo);
   }
 }
