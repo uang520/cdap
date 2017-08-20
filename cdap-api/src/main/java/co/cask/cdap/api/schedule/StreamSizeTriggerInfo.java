@@ -23,12 +23,21 @@ public class StreamSizeTriggerInfo extends TriggerInfo {
   private final String streamNamespace;
   private final String streamName;
   private final int triggerMB;
+  private final long logicalStartTime;
+  private final long streamSize;
+  private final long basePollingTime;
+  private final long baseStreamSize;
 
-  public StreamSizeTriggerInfo(String streamNamespace, String streamName, int triggerMB) {
+  public StreamSizeTriggerInfo(String streamNamespace, String streamName, int triggerMB,
+                               long logicalStartTime, long streamSize, long basePollingTime, long baseStreamSize) {
     super(Trigger.Type.STREAM_SIZE);
     this.streamNamespace = streamNamespace;
     this.streamName = streamName;
     this.triggerMB = triggerMB;
+    this.logicalStartTime = logicalStartTime;
+    this.streamSize = streamSize;
+    this.basePollingTime = basePollingTime;
+    this.baseStreamSize = baseStreamSize;
   }
 
   /**
@@ -50,5 +59,38 @@ public class StreamSizeTriggerInfo extends TriggerInfo {
    */
   public int getTriggerMB() {
     return triggerMB;
+  }
+
+  /**
+   * Returns the logical start time of the triggered program. Logical start time is when the schedule decides to launch
+   * the program when the stream size trigger is satisfied, i.e. when {@link #getStreamSize()} is at least
+   * {@link #getTriggerMB()} larger than the {@link #getBaseStreamSize()}.
+   *
+   * @return Time in milliseconds since epoch time (00:00:00 January 1, 1970 UTC)
+   */
+  public long getLogicalStartTime() {
+    return logicalStartTime;
+  }
+
+  /**
+   * @return Stream size in bytes at the moment when the stream size trigger is satisfied, i.e. the stream size is
+   *         at least {@link #getTriggerMB()} larger than the {@link #getBaseStreamSize()}.
+   */
+  public long getStreamSize() {
+    return streamSize;
+  }
+
+  /**
+   * @return Time in milliseconds of the previous stream size polling.
+   */
+  public long getBasePollingTime() {
+    return basePollingTime;
+  }
+
+  /**
+   * @return Stream size in bytes from previous polling.
+   */
+  public long getBaseStreamSize() {
+    return baseStreamSize;
   }
 }

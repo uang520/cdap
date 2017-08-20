@@ -106,8 +106,12 @@ public class TimeTrigger extends ProtoTrigger.TimeTrigger implements Satisfiable
         // add overrides from current notification to runtime arguments
         sysArgs.putAll(systemOverrides);
         userArgs.putAll(userOverrides);
-        String logicalStartTime = userOverrides.get(ProgramOptionConstants.LOGICAL_START_TIME);
-        return ImmutableList.<TriggerInfo>of(new TimeTriggerInfo(cronExpression, Long.valueOf(logicalStartTime)));
+        String logicalStartTimeString = userOverrides.get(ProgramOptionConstants.LOGICAL_START_TIME);
+        if (logicalStartTimeString == null) {
+          LOG.warn("{} cannot be found in notification '{}'", ProgramOptionConstants.LOGICAL_START_TIME, notification);
+          return ImmutableList.of();
+        }
+        return ImmutableList.<TriggerInfo>of(new TimeTriggerInfo(cronExpression, Long.valueOf(logicalStartTimeString)));
       }
     }
     LOG.trace("No logical start time found from notifications {} for TimeTrigger with cron expression '{}' " +

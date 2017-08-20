@@ -59,23 +59,25 @@ public class StreamSizeTrigger extends ProtoTrigger.StreamSizeTrigger implements
   public List<TriggerInfo> getTriggerInfosAddArgumentOverrides(TriggerInfoContext context, Map<String, String> sysArgs,
                                                                Map<String, String> userArgs) {
     Notification notification = context.getNotifications().get(0);
-    String systemOverridesString = notification.getProperties().get(ProgramOptionConstants.SYSTEM_OVERRIDES);
     String userOverridesString = notification.getProperties().get(ProgramOptionConstants.USER_OVERRIDES);
-    if (systemOverridesString != null) {
-      Map<String, String> systemOverrides = GSON.fromJson(systemOverridesString, STRING_STRING_MAP);
-      sysArgs.putAll(systemOverrides);
-    } else {
-      LOG.warn("Notification '{}' should contain property '{}' but does not.", notification,
-               ProgramOptionConstants.SYSTEM_OVERRIDES);
+    if (userOverridesString == null) {
+        LOG.warn("The notification '{}' in the job of schedule '{}' does not contain property '{}'.",
+                 notification, context.getSchedule(), ProgramOptionConstants.USER_OVERRIDES);
+        return ImmutableList.of();
     }
-    if (userOverridesString != null) {
-      Map<String, String> userOverrides = GSON.fromJson(userOverridesString, STRING_STRING_MAP);
-      userArgs.putAll(userOverrides);
-    } else {
-      LOG.warn("Notification '{}' should contain property '{}' but does not.", notification,
-               ProgramOptionConstants.USER_OVERRIDES);
+    Map<String, String> userOverrides = GSON.fromJson(userOverridesString, STRING_STRING_MAP);
+    try {
+      long logicalStartTime = Long.valueOf(userOverrides.get(ProgramOptionConstants.LOGICAL_START_TIME));
+      long streamSize = Long.valueOf(userOverrides.get(ProgramOptionConstants.RUN_DATA_SIZE));
+      long basePollingTime = Long.valueOf(userOverrides.get(ProgramOptionConstants.RUN_BASE_COUNT_TIME));
+      long baseStreamSize = Long.valueOf(userOverrides.get(ProgramOptionConstants.RUN_BASE_COUNT_SIZE));
+      TriggerInfo triggerInfo =
+        new StreamSizeTriggerInfo(streamId.getNamespace(), streamId.getStream(), triggerMB,
+                                  logicalStartTime, streamSize, basePollingTime, baseStreamSize);
+      return ImmutableList.of(triggerInfo);
+    } catch (NumberFormatException e) {
+      LOG.warn("Failed to parse long value from notification '{}'", notification, e);
     }
-    TriggerInfo triggerInfo = new StreamSizeTriggerInfo(streamId.getNamespace(), streamId.getStream(), triggerMB);
-    return ImmutableList.of(triggerInfo);
+    return ImmutableList.of();
   }
 }
