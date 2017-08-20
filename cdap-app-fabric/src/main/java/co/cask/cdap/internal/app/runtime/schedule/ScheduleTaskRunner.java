@@ -48,6 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -103,7 +104,8 @@ public final class ScheduleTaskRunner {
                                                            Map<String, String> userArgs) {
     TriggerInfoContext triggerInfoContext = new TriggerInfoContext(job, store);
     SatisfiableTrigger trigger = ((SatisfiableTrigger) job.getSchedule().getTrigger());
-    TriggerInfo triggerInfo = trigger.getTriggerInfosAddArgumentOverrides(triggerInfoContext, systemArgs, userArgs);
+    List<TriggerInfo> triggerInfo = trigger.getTriggerInfosAddArgumentOverrides(triggerInfoContext, systemArgs,
+                                                                                userArgs);
     return new TriggeringScheduleInfo(schedule.getName(), schedule.getDescription(),
                                       triggerInfo, schedule.getProperties());
   }

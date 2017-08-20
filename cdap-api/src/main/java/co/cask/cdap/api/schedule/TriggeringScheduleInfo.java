@@ -16,6 +16,9 @@
 
 package co.cask.cdap.api.schedule;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,8 +36,8 @@ public class TriggeringScheduleInfo {
                                 Map<String, String> properties) {
     this.name = name;
     this.description = description;
-    this.properties = properties;
-    this.triggerInfos = triggerInfos;
+    this.properties = Collections.unmodifiableMap(new HashMap<>(properties));
+    this.triggerInfos = Collections.unmodifiableList(new ArrayList<>(triggerInfos));
   }
 
   /**
@@ -62,7 +65,7 @@ public class TriggeringScheduleInfo {
   }
 
   /**
-   * @return Properties of the schedule.
+   * @return An immutable map containing the properties of the schedule.
    */
   public Map<String, String> getProperties() {
     return properties;
