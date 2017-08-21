@@ -56,6 +56,7 @@ import co.cask.cdap.proto.id.KerberosPrincipalId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.ProgramRunId;
+import co.cask.cdap.proto.id.ScheduleId;
 import co.cask.http.BodyConsumer;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
@@ -638,11 +639,22 @@ public class AppFabricClient {
     String uri = String.format("%s/apps/%s/versions/%s/schedules/%s", getNamespacePath(application.getNamespace()),
                                application.getVersion(), application.getApplication(), scheduleDetail.getName());
     HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, uri);
-    JsonObject json = new JsonObject();
-    json.addProperty("schedule", GSON.toJson(scheduleDetail));
-    request.setContent(ChannelBuffers.wrappedBuffer(json.toString().getBytes()));
-    programLifecycleHttpHandler.addSchedule(request, responder, application.getNamespace(), application.getApplication(),
-                                            application.getVersion(), scheduleDetail.getName());
-    verifyResponse(HttpResponseStatus.OK, responder.getStatus(), "Set worker instances failed");
+    request.setContent(ChannelBuffers.wrappedBuffer(GSON.toJson(scheduleDetail).getBytes()));
+    programLifecycleHttpHandler.addSchedule(request, responder, application.getNamespace(),
+                                            application.getApplication(), application.getVersion(),
+                                            scheduleDetail.getName());
+    verifyResponse(HttpResponseStatus.OK, responder.getStatus(), "Add schedule failed");
+  }
+
+  public void enableSchedule(ScheduleId scheduleId) throws Exception {
+    MockResponder responder = new MockResponder();
+    String uri = String.format("%s/apps/%s/versions/%s/program-type/schedules/program-id/%s/action/enable",
+                               getNamespacePath(scheduleId.getNamespace()), scheduleId.getVersion(),
+                               scheduleId.getApplication(), scheduleId.getSchedule());
+    HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, uri);
+    programLifecycleHttpHandler.performAction(request, responder, scheduleId.getNamespace(),
+                                              scheduleId.getApplication(), scheduleId.getVersion(),
+                                              "schedules", scheduleId.getSchedule(), "enable");
+    verifyResponse(HttpResponseStatus.OK, responder.getStatus(), "Enable schedule failed");
   }
 }

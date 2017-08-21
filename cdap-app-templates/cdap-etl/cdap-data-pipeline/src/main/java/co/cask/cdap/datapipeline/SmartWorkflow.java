@@ -347,10 +347,8 @@ public class SmartWorkflow extends AbstractWorkflow {
     if (scheduleInfo != null) {
       String propertiesMappingString = scheduleInfo.getProperties().get(TRIGGERING_PROPERTIES_MAPPING);
       if (propertiesMappingString != null) {
-        Map<String, String> propertiesMap = GSON.fromJson(propertiesMappingString,
-                                                                                STRING_STRING_MAP);
-        Map<String, String> newRuntimeArgs =
-          getNewRuntimeArgsFromScheduleInfo(scheduleInfo, propertiesMap);
+        Map<String, String> propertiesMap = GSON.fromJson(propertiesMappingString, STRING_STRING_MAP);
+        Map<String, String> newRuntimeArgs = getNewRuntimeArgsFromScheduleInfo(scheduleInfo, propertiesMap);
         for (Map.Entry<String, String> entry : newRuntimeArgs.entrySet()) {
           combinedRuntimeArgs.put(entry.getKey(), entry.getValue());
           context.getToken().put(entry.getKey(), entry.getValue());

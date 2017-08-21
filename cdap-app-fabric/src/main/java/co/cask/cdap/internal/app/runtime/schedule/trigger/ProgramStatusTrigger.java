@@ -32,7 +32,9 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
+import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -44,6 +46,8 @@ import java.util.Set;
  */
 public class ProgramStatusTrigger extends ProtoTrigger.ProgramStatusTrigger implements SatisfiableTrigger {
   private static final Gson GSON = new Gson();
+  private static final java.lang.reflect.Type STRING_STRING_MAP =
+    new TypeToken<Map<String, String>>() { }.getType();
 
   public ProgramStatusTrigger(ProgramId programId, Set<ProgramStatus> programStatuses) {
     super(programId, programStatuses);
@@ -76,13 +80,16 @@ public class ProgramStatusTrigger extends ProtoTrigger.ProgramStatusTrigger impl
     Function<ProgramRunInfo, List<TriggerInfo>> function = new Function<ProgramRunInfo, List<TriggerInfo>>() {
       @Override
       public List<TriggerInfo> apply(ProgramRunInfo runInfo) {
+        Map<String, String> runtimeArgs =
+          GSON.fromJson(context.getProgramRuntimeArguments(programId, runInfo.getRunId())
+                          .get("runtimeArgs"), STRING_STRING_MAP);
         TriggerInfo triggerInfo =
           new ProgramStatusTriggerInfo(programId.getNamespace(),
                                        context.getApplicationSpecification(programId.getParent()),
                                        ProgramType.valueOf(programId.getType().name()), programId.getProgram(),
                                        programStatuses, runInfo.getRunId(), runInfo.getProgramStatus(),
-                                       context.getWorkflowToken(programId, runInfo.getRunId()),
-                                       context.getProgramRuntimeArguments(programId, runInfo.getRunId()));
+                                       context.getWorkflowToken(programId, runInfo.getRunId()), runtimeArgs);
+        ;
         return ImmutableList.of(triggerInfo);
       }
     };

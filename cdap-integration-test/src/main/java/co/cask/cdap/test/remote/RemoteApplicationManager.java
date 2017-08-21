@@ -33,6 +33,7 @@ import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.FlowId;
 import co.cask.cdap.proto.id.ProgramId;
+import co.cask.cdap.proto.id.ScheduleId;
 import co.cask.cdap.proto.id.ServiceId;
 import co.cask.cdap.proto.id.WorkflowId;
 import co.cask.cdap.test.AbstractApplicationManager;
@@ -176,6 +177,15 @@ public class RemoteApplicationManager extends AbstractApplicationManager {
   public void addSchedule(ScheduleDetail scheduleDetail) {
     try {
       applicationClient.addSchedule(application, scheduleDetail);
+    } catch (Exception e) {
+      throw Throwables.propagate(e);
+    }
+  }
+
+  @Override
+  public void enableSchedule(ScheduleId scheduleId) throws Exception {
+    try {
+      applicationClient.enableSchedule(scheduleId);
     } catch (Exception e) {
       throw Throwables.propagate(e);
     }
