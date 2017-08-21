@@ -217,6 +217,52 @@ public class PipelinePlanner {
           } else {
             phaseConnections.add(new Connection(dag1Name, dag2Name));
           }
+        } else {
+          if (Sets.intersection(dag1.getSources(), dag2.getSources()).size() > 0) {
+            Set<String> controlAsSource = Sets.intersection(dag1.getSources(), controlNodes);
+            if (!controlAsSource.isEmpty()) {
+              String controlNodeName = controlAsSource.iterator().next();
+
+              ConditionBranches branches = conditionBranches.get(controlNodeName);
+              if (branches != null) {
+                for (Boolean condition : Arrays.asList(true, false)) {
+                  String stage = condition ? branches.getTrueOutput() : branches.getFalseOutput();
+                  if (stage == null) {
+                    continue;
+                  }
+
+                  if (!dag2.getNodes().contains(stage)) {
+                    continue;
+                  }
+
+                  if (controlNodes.containsAll(dag2.getNodes())) {
+                    // dag 2 only contains condition stages. dag1 sink is same as dag 2 source condition node.
+                    // so we added condition phase corresponding to the dag1 sink. Now phase connection should be
+                    // added from newly created condition phase to the dag 2 sink condition, rather than using dag2name
+                    // here. The scenario here is n1-c1-c2-c3-n2. dag1 is <n1, c1> and dag 2 is <c1, c2>. We just created
+                    // c1 as new phase. since dag2 satisfies the above if condition (as it only contains conditions) we add
+                    // phase connection from c1->c2, rather than c1->c1.to.c2
+                    phaseConnections.add(new Connection(controlNodeName, dag2.getSinks().iterator().next(),
+                                                        condition));
+                  } else {
+                    // scenario here is n1-c1-c2-n2. dag 1 is <c1, c2> and dag 2 is <c2, n2>. We just created condition phase
+                    // for c2 and the phase connection should be c2->c2.to.n2
+                    phaseConnections.add(new Connection(controlNodeName, dag2Name, condition));
+                  }
+                  break;
+                }
+              } else {
+                if (controlNodes.containsAll(dag2.getNodes())) {
+                  phaseConnections.add(new Connection(controlNodeName, dag2.getSinks().iterator().next()));
+                } else {
+                  phaseConnections.add(new Connection(controlNodeName, dag2Name));
+                }
+              }
+              processControlNodes.add(controlNodeName);
+            } else {
+              phaseConnections.add(new Connection(dag1Name, dag2Name));
+            }
+          }
         }
       }
     }
