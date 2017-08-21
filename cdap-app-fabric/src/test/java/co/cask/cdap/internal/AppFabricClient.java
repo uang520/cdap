@@ -632,4 +632,17 @@ public class AppFabricClient {
     verifyResponse(HttpResponseStatus.OK, mockResponder.getStatus(), "Getting app info failed");
     return mockResponder.decodeResponseContent(new TypeToken<List<PluginInstanceDetail>>() { }.getType(), GSON);
   }
+
+  public void addSchedule(ApplicationId application, ScheduleDetail scheduleDetail) throws Exception {
+    MockResponder responder = new MockResponder();
+    String uri = String.format("%s/apps/%s/versions/%s/schedules/%s", getNamespacePath(application.getNamespace()),
+                               application.getVersion(), application.getApplication(), scheduleDetail.getName());
+    HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, uri);
+    JsonObject json = new JsonObject();
+    json.addProperty("schedule", GSON.toJson(scheduleDetail));
+    request.setContent(ChannelBuffers.wrappedBuffer(json.toString().getBytes()));
+    programLifecycleHttpHandler.addSchedule(request, responder, application.getNamespace(), application.getApplication(),
+                                            application.getVersion(), scheduleDetail.getName());
+    verifyResponse(HttpResponseStatus.OK, responder.getStatus(), "Set worker instances failed");
+  }
 }

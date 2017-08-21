@@ -28,6 +28,7 @@ import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
+import co.cask.cdap.proto.ScheduleDetail;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ProgramId;
@@ -180,6 +181,11 @@ public class DefaultApplicationManager extends AbstractApplicationManager {
     } catch (Exception e) {
       throw Throwables.propagate(e);
     }
+  }
+
+  @Override
+  public void addSchedule(ScheduleDetail scheduleDetail) throws Exception {
+    appFabricClient.addSchedule(application, scheduleDetail);
   }
 
   @Override

@@ -21,6 +21,7 @@ import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.PluginInstanceDetail;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.RunRecord;
+import co.cask.cdap.proto.ScheduleDetail;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ProgramId;
 
@@ -152,6 +153,13 @@ public interface ApplicationManager {
    * @return list of {@link RunRecord} history
    */
   List<RunRecord> getHistory(ProgramId programId, ProgramRunStatus status);
+
+  /**
+   * Adds a schedule to the app.
+   *
+   * @param scheduleDetail the schedule to be added.
+   */
+  void addSchedule(ScheduleDetail scheduleDetail) throws Exception;
 
   /**
    * Updates this application

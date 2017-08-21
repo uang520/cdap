@@ -28,6 +28,7 @@ import co.cask.cdap.proto.ProgramRecord;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
+import co.cask.cdap.proto.ScheduleDetail;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.FlowId;
@@ -166,6 +167,15 @@ public class RemoteApplicationManager extends AbstractApplicationManager {
   public List<RunRecord> getHistory(ProgramId programId, ProgramRunStatus status) {
     try {
       return programClient.getProgramRuns(programId, status.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
+    } catch (Exception e) {
+      throw Throwables.propagate(e);
+    }
+  }
+
+  @Override
+  public void addSchedule(ScheduleDetail scheduleDetail) {
+    try {
+      applicationClient.addSchedule(application, scheduleDetail);
     } catch (Exception e) {
       throw Throwables.propagate(e);
     }
