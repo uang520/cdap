@@ -16,10 +16,16 @@
 
 package co.cask.cdap.metrics.query;
 
+import co.cask.cdap.common.ServiceUnavailableException;
 import co.cask.cdap.common.conf.Constants;
+import co.cask.cdap.messaging.MessagingUtils;
+import co.cask.cdap.metrics.process.MetricsConsumerMetaTable;
+import co.cask.cdap.metrics.process.MetricsMetaKey;
+import co.cask.cdap.metrics.store.MetricDatasetFactory;
 import co.cask.cdap.proto.MetricQueryRequest;
 import co.cask.cdap.proto.MetricTagValue;
 import co.cask.cdap.proto.id.NamespaceId;
+import co.cask.cdap.proto.id.TopicId;
 import co.cask.http.AbstractHttpHandler;
 import co.cask.http.HttpResponder;
 import com.google.common.base.Charsets;
@@ -31,6 +37,8 @@ import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Inject;
+import com.google.inject.assistedinject.Assisted;
+import com.google.inject.name.Named;
 import org.jboss.netty.handler.codec.http.HttpHeaders;
 import org.jboss.netty.handler.codec.http.HttpRequest;
 import org.jboss.netty.handler.codec.http.HttpResponseStatus;
@@ -39,8 +47,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -62,10 +74,21 @@ public class MetricsHandler extends AbstractHttpHandler {
                      new MetricTagValue(Constants.Metrics.Tag.COMPONENT, Constants.Service.METRICS_PROCESSOR));
 
   private final MetricsQueryHelper metricsQueryHelper;
+  private final MetricDatasetFactory metricDatasetFactory;
+  private final List<TopicId> metricsTopics;
+
+  private MetricsConsumerMetaTable metaTable;
 
   @Inject
-  public MetricsHandler(MetricsQueryHelper metricsQueryHelper) {
+  public MetricsHandler(MetricsQueryHelper metricsQueryHelper, MetricDatasetFactory metricDatasetFactory,
+                        @Named(Constants.Metrics.TOPIC_PREFIX) String topicPrefix,
+                        @Named(Constants.Metrics.MESSAGING_TOPIC_NUM) Integer topicNumbers) {
     this.metricsQueryHelper = metricsQueryHelper;
+    this.metricDatasetFactory = metricDatasetFactory;
+    this.metricsTopics = new ArrayList<>();
+    for (int i = 0; i < topicNumbers; i++) {
+      this.metricsTopics.add(NamespaceId.SYSTEM.topic(topicPrefix + i));
+    }
   }
 
   @POST
@@ -130,19 +153,51 @@ public class MetricsHandler extends AbstractHttpHandler {
   @GET
   @Path("/processor/status")
   public void processorStatus(HttpRequest request, HttpResponder responder) throws Exception {
-    List<String> delayMetrics =
-      Lists.newArrayList(Iterables.filter(metricsQueryHelper.getMetrics(METRICS_PROCESSOR_TAGS_LIST),
-                                          new Predicate<String>() {
-                                            @Override
-                                            public boolean apply(@Nullable String input) {
-                                              return input.endsWith(Constants.MetricsProcessor.DELAY_METRIC_SUFFIX);
-                                            }
-                                          }));
+    if (metaTable == null) {
+      metaTable = metricDatasetFactory.createConsumerMeta();
+    }
+    Map<TopicId, Long> processMap = new HashMap<>();
+    for (TopicId topicId : metricsTopics) {
+      processMap.put(topicId, metaTable.getProcessTotal(new TopicIdMetaKey(topicId)));
+    }
+    responder.sendJson(HttpResponseStatus.OK, processMap);
+  }
 
-    MetricQueryRequest metricQueryRequest =
-      new MetricQueryRequest(METRICS_PROCESSOR_TAGS_MAP, delayMetrics, new ArrayList<String>());
-    metricsQueryHelper.setTimeRangeInQueryRequest(metricQueryRequest,
-                                                  new QueryStringDecoder(request.getUri()).getParameters());
-    responder.sendJson(HttpResponseStatus.OK, metricsQueryHelper.executeQuery(metricQueryRequest));
+  private final class TopicIdMetaKey implements MetricsMetaKey {
+
+    private final TopicId topicId;
+    private final byte[] key;
+
+    TopicIdMetaKey(TopicId topicId) {
+      this.topicId = topicId;
+      this.key = MessagingUtils.toMetadataRowKey(topicId);
+    }
+
+    @Override
+    public byte[] getKey() {
+      return key;
+    }
+
+    TopicId getTopicId() {
+      return topicId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      TopicIdMetaKey that = (TopicIdMetaKey) o;
+      // Comparing the key is enough because key and topicId have one-to-one relationship
+      return Arrays.equals(getKey(), that.getKey());
+    }
+
+    @Override
+    public int hashCode() {
+      return Arrays.hashCode(getKey());
+    }
   }
 }

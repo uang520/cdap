@@ -30,6 +30,10 @@ public class MetricsConsumerMetaTable {
   private static final byte[] OFFSET_COLUMN = Bytes.toBytes("o");
   private static final byte[] MESSAGE_ID_COLUMN = Bytes.toBytes("m");
 
+  private static final byte[] PROCESS_COUNT_TOTAL = Bytes.toBytes("pct");
+  private static final byte[] PROCESS_TIMESTAMP_OLDEST = Bytes.toBytes("pto");
+  private static final byte[] PROCESS_TIMESTAMP_LATEST = Bytes.toBytes("ptl");
+
   private final MetricsTable metaTable;
 
   public MetricsConsumerMetaTable(MetricsTable metaTable) {
@@ -56,6 +60,19 @@ public class MetricsConsumerMetaTable {
     metaTable.putBytes(updates);
   }
 
+
+  public <T extends MetricsMetaKey> void saveProcessTotal(Map<T, PersistMetaInfo> messageIds) throws Exception {
+    SortedMap<byte[], SortedMap<byte[], Long>> updates = new TreeMap<>(Bytes.BYTES_COMPARATOR);
+    for (Map.Entry<T, PersistMetaInfo> entry : messageIds.entrySet()) {
+      SortedMap<byte[], Long> map = new TreeMap<>(Bytes.BYTES_COMPARATOR);
+      if (entry.getValue().getMessagesProcessed() > 0L) {
+        map.put(PROCESS_COUNT_TOTAL, entry.getValue().getMessagesProcessed());
+        updates.put(entry.getKey().getKey(), map);
+      }
+    }
+    metaTable.put(updates);
+  }
+
   /**
    * Gets the value as a long in the {@link MetricsTable} of a given key.
    *
@@ -65,6 +82,21 @@ public class MetricsConsumerMetaTable {
    */
   public synchronized <T extends MetricsMetaKey> long get(T metaKey) throws Exception {
     byte[] result = metaTable.get(metaKey.getKey(), OFFSET_COLUMN);
+    if (result == null) {
+      return -1;
+    }
+    return Bytes.toLong(result);
+  }
+
+  /**
+   * Gets the value as a long in the {@link MetricsTable} of a given key.
+   *
+   * @param metaKey Object form of the key to get value with.
+   * @return The value or {@code -1} if the value is not found.
+   * @throws Exception If there is an error when fetching.
+   */
+  public synchronized <T extends MetricsMetaKey> long getProcessTotal(T metaKey) throws Exception {
+    byte[] result = metaTable.get(metaKey.getKey(), PROCESS_COUNT_TOTAL);
     if (result == null) {
       return -1;
     }

@@ -40,11 +40,9 @@ import co.cask.cdap.messaging.data.RawMessage;
 import co.cask.cdap.metrics.store.MetricDatasetFactory;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.TopicId;
-import com.codahale.metrics.Metric;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Throwables;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.common.reflect.TypeToken;
 import com.google.common.util.concurrent.AbstractExecutionThreadService;
@@ -271,15 +269,16 @@ public class MessagingMetricsProcessorService extends AbstractExecutionThreadSer
     List<MetricValue> topicLevelDelays = new ArrayList<>();
 
     // add topic level delay metrics
-    for (Map.Entry<TopicIdMetaKey, PersistMetaInfo> entry : topicMetrics.entrySet()) {
-      if (entry.getValue().getMetricsTimestamp() != null) {
-        String metricName = String.format("%s.topic.%s.%s",
-                                          delayMetricPrefix, entry.getKey().getTopicId().getTopic(),
-                                          Constants.MetricsProcessor.DELAY_METRIC_SUFFIX);
-        long delay = now - TimeUnit.SECONDS.toMillis(entry.getValue().getMetricsTimestamp());
-        topicLevelDelays.add(new MetricValue(metricName, MetricType.GAUGE, delay));
-      }
-    }
+    // todo update to emit topic level delay metrics for latest and oldest timestamps
+//    for (Map.Entry<TopicIdMetaKey, PersistMetaInfo> entry : topicMetrics.entrySet()) {
+//      if (entry.getValue().getMetricsTimestamp() != null) {
+//        String metricName = String.format("%s.topic.%s.%s",
+//                                          delayMetricPrefix, entry.getKey().getTopicId().getTopic(),
+//                                          Constants.MetricsProcessor.DELAY_METRIC_SUFFIX);
+//        long delay = now - TimeUnit.SECONDS.toMillis(entry.getValue().getMetricsTimestamp());
+//        topicLevelDelays.add(new MetricValue(metricName, MetricType.GAUGE, delay));
+//      }
+//    }
     List<MetricValue> processorMetrics = new ArrayList<>(topicLevelDelays);
     processorMetrics.add(new MetricValue(processMetricName, MetricType.COUNTER, metricValues.size()));
 
@@ -307,6 +306,8 @@ public class MessagingMetricsProcessorService extends AbstractExecutionThreadSer
             return input.getMessageId();
           }
         }));
+
+        metaTable.saveProcessTotal(messageIds);
       }
     } catch (Exception e) {
       LOG.warn("Failed to persist messageId's of consumed messages.", e);
@@ -323,7 +324,7 @@ public class MessagingMetricsProcessorService extends AbstractExecutionThreadSer
       super(String.format("ProcessMetricsThread-%s", topicIdMetaKey.getTopicId()));
       setDaemon(true);
       if (messageId != null) {
-        topicMessageIds.put(topicIdMetaKey, new PersistMetaInfo(messageId, null));
+        topicMessageIds.put(topicIdMetaKey, new PersistMetaInfo(messageId));
       }
       this.topicIdMetaKey = topicIdMetaKey;
       this.payloadInput = new PayloadInputStream();
@@ -395,7 +396,8 @@ public class MessagingMetricsProcessorService extends AbstractExecutionThreadSer
         }
 
         if (currentMessageId != null) {
-          topicMessageIds.put(topicIdMetaKey, new PersistMetaInfo(currentMessageId, lastMetricTimeSecs));
+          // update messageId and timestamp information
+          persistMetaInfo.updateMetaInfo(currentMessageId, lastMetricTimeSecs);
         }
 
         // Try to persist metrics and messageId's of the last metrics to be persisted if no other thread is persisting
@@ -448,25 +450,6 @@ public class MessagingMetricsProcessorService extends AbstractExecutionThreadSer
         // Set persistingFlag back to false after persisting completes.
         persistingFlag.set(false);
       }
-    }
-  }
-
-  private final class PersistMetaInfo {
-    private final byte[] messageId;
-    private final Long metricsTimestamp;
-
-    PersistMetaInfo(byte[] messageId, @Nullable Long metricsTimestamp) {
-      this.messageId = messageId;
-      this.metricsTimestamp = metricsTimestamp;
-    }
-
-    byte[] getMessageId() {
-      return messageId;
-    }
-
-    @Nullable
-    Long getMetricsTimestamp() {
-      return metricsTimestamp;
     }
   }
 
